@@ -13,7 +13,7 @@ url = f'https://aiarena.net/api/bots/{bot_id}/'
 print("Uploading bot")
 with (
     open(ZIPFILE_NAME, "rb") as bot_zip,
-    open(README_FILE_NAME, "rb") as readme,
+    open(README_FILE_NAME, "r") as readme,
 ):
     request_headers = {
         "Authorization": f"Token {token}",
@@ -22,7 +22,7 @@ with (
         "bot_zip_publicly_downloadable": True,
         "bot_data_publicly_downloadable": False,
         "bot_data_enabled": False,
-        "wiki_article_content": readme,
+        "wiki_article_content": readme.read(),
     }
     request_files = {
         "bot_zip": bot_zip,
