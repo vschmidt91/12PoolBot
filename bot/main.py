@@ -42,7 +42,8 @@ class TwelvePoolBot(AresBot):
             self.register_behavior(Mining())
         else:
             await self.macro()
-            self.micro()
+            self.micro_army()
+            self.micro_queens()
 
     async def on_start(self) -> None:
         await super().on_start()
@@ -78,7 +79,8 @@ class TwelvePoolBot(AresBot):
         gas_harvester_target = 3 if research_speed or go_mutas else 0
         army_composition = self.get_army_composition(go_mutas)
         self.register_behavior(Mining(workers_per_gas=gas_harvester_target))
-        self.register_behavior(AutoSupply(base_location=self.start_location))
+        if 1 < self.townhalls.amount:
+            self.register_behavior(AutoSupply(base_location=self.start_location))
         return (
             await self.make_tech(go_mutas)
             or self.get_upgrades()
@@ -184,10 +186,6 @@ class TwelvePoolBot(AresBot):
         if self.larva and 1 <= self.supply_left:
             self.register_behavior(SpawnController(army_composition))
             return "making army"
-
-    def micro(self) -> None:
-        self.micro_army()
-        self.micro_queens()
 
     def micro_army(self) -> None:
         invisible_enemy_start_locations = [p for p in self.enemy_start_locations if not self.is_visible(p)]

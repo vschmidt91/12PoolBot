@@ -1,8 +1,6 @@
 12PoolBot
 =========
 
-"Just F@#$ing Kill Them"
-
 [Git Repo](https://github.com/vschmidt91/12PoolBot)
 
 Proudly using
