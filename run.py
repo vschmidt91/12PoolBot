@@ -15,7 +15,7 @@ sys.path.append("ares-sc2")
 
 import yaml
 
-from main import TwelvePoolBot
+from bot.main import TwelvePoolBot
 from ladder import run_ladder_game
 
 # change if non default setup / linux
