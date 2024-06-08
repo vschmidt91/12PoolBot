@@ -1,5 +1,3 @@
-from ares import AresBot
-
 from typing import Iterable, Optional
 
 from sc2.dicts.unit_trained_from import UNIT_TRAINED_FROM
@@ -11,26 +9,29 @@ from sc2.ids.upgrade_id import UpgradeId
 from sc2.position import Point2
 
 from actions import Action, Build, DoNothing, UseAbility
-from strategy import Strategy
+from .component import Component
+from .strategy import StrategyDecision
 
 
-class Macro(AresBot):
-
-    def macro(self, strategy: Strategy) -> Iterable[Action]:
-        return [(
-            self.wait_for_build_order_completion()
-            or self.make_tech(strategy)
-            or self.get_upgrades()
-            or self.train_army()
-            or self.train_queen()
-            or self.expand()
-            or self.morph_overlord()
-            or DoNothing()
-        )]
+class Macro(Component):
+    def macro(self, strategy: StrategyDecision) -> Iterable[Action]:
+        return [
+            (
+                self.wait_for_build_order_completion()
+                or self.make_tech(strategy)
+                or self.get_upgrades()
+                or self.train_army()
+                or self.train_queen()
+                or self.expand()
+                or self.morph_overlord()
+                or DoNothing()
+            )
+        ]
 
     def wait_for_build_order_completion(self) -> Optional[Action]:
         if not self.build_order_runner.build_completed:
             return DoNothing()
+        return None
 
     def expand(self) -> Optional[Action]:
         if (
@@ -40,8 +41,9 @@ class Macro(AresBot):
             and (target := self.get_next_expansion())
         ):
             return Build(builder, UnitTypeId.HATCHERY, target)
+        return None
 
-    def make_tech(self, strategy: Strategy) -> Optional[Action]:
+    def make_tech(self, strategy: StrategyDecision) -> Optional[Action]:
         if strategy.mutalisk_switch:
             return (
                 self.ensure_structure_exists(UnitTypeId.SPAWNINGPOOL)
@@ -52,11 +54,9 @@ class Macro(AresBot):
             return self.ensure_structure_exists(UnitTypeId.SPAWNINGPOOL)
 
     def morph_overlord(self) -> Optional[Action]:
-        if (
-            self.supply_left < 1
-            and not self.already_pending(UnitTypeId.OVERLORD)
-        ):
+        if self.supply_left < 1 and not self.already_pending(UnitTypeId.OVERLORD):
             return self.train_unit(UnitTypeId.OVERLORD)
+        return None
 
     def train_queen(self) -> Optional[Action]:
         if (
@@ -67,6 +67,7 @@ class Macro(AresBot):
             and (hatch := next((t for t in self.townhalls if t.is_idle), None))
         ):
             return UseAbility(hatch, AbilityId.TRAINQUEEN_QUEEN)
+        return None
 
     def get_upgrades(self) -> Optional[Action]:
         if (
@@ -79,6 +80,7 @@ class Macro(AresBot):
             )
         ):
             return UseAbility(pool, AbilityId.RESEARCH_ZERGLINGMETABOLICBOOST)
+        return None
 
     def ensure_structure_exists(self, type_id: UnitTypeId) -> Optional[Action]:
         placement_near = self.start_location.towards(self.game_info.map_center, 8)
@@ -90,6 +92,7 @@ class Macro(AresBot):
             and (trainer := next((t for t in self.mediator.get_own_army_dict[trainer_type_id]), None))
         ):
             return Build(trainer, type_id, placement_near)
+        return None
 
     def ensure_lair_exists(self) -> Optional[Action]:
         if (
@@ -103,13 +106,16 @@ class Macro(AresBot):
             )
         ):
             return UseAbility(hatch, AbilityId.UPGRADETOLAIR_LAIR)
+        return None
 
     def train_army(self) -> Optional[Action]:
         larva_per_second = sum(
-            sum((
-                1 / 11 if h.is_ready else 0,
-                3 / 29 if h.has_buff(BuffId.QUEENSPAWNLARVATIMER) else 0,
-            ))
+            sum(
+                (
+                    1 / 11 if h.is_ready else 0,
+                    3 / 29 if h.has_buff(BuffId.QUEENSPAWNLARVATIMER) else 0,
+                )
+            )
             for h in self.townhalls
         )
         minerals_for_lings = 50 * 60 * larva_per_second  # maximum we can possibly spend on lings
@@ -134,6 +140,7 @@ class Macro(AresBot):
         ):
             ability = TRAIN_INFO[trainer_type_id][type_id]["ability"]
             return UseAbility(trainer, ability)
+        return None
 
     def get_next_expansion(self) -> Optional[Point2]:
         taken = {th.position for th in self.townhalls}

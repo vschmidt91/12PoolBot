@@ -17,9 +17,20 @@ requests = "^2.32.3"
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
 
+[tool.flake8]
+max-line-length = 120
+
 [tool.black]
 extend-exclude = 'ares-sc2/*'
+line-length = 120
 
 [tool.isort]
 profile = "black"
 skip_glob = ["ares-sc2/*"]
+
+[[tool.mypy.overrides]]
+module = [
+    "ares.*",
+    "sc2.*",
+]
+ignore_missing_imports = true

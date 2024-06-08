@@ -1,5 +1,3 @@
-from ares import AresBot
-
 from itertools import chain, cycle
 from typing import Iterable
 
@@ -11,19 +9,19 @@ from sc2.position import Point2
 from sc2.unit import Unit
 
 from actions import Action, Attack, GatherResources, UseAbility
-from strategy import Strategy
+from .component import Component
+from .strategy import StrategyDecision
 
 
-class Micro(AresBot):
-
-    def micro(self, strategy: Strategy) -> Iterable[Action]:
+class Micro(Component):
+    def micro(self, strategy: StrategyDecision) -> Iterable[Action]:
         return chain(
             self.micro_workers(strategy),
             self.micro_army(),
             self.micro_queens(),
         )
 
-    def micro_workers(self, strategy: Strategy) -> Iterable[Action]:
+    def micro_workers(self, strategy: StrategyDecision) -> Iterable[Action]:
         workers_per_gas = 3 if strategy.gather_vespene else 0
         yield GatherResources(workers_per_gas)
 
@@ -38,19 +36,14 @@ class Micro(AresBot):
         def micro_unit(unit: Unit, target: Point2) -> Iterable[Action]:
             if unit.is_idle:
                 yield Attack(unit, target)
+
         army = self.units({UnitTypeId.ZERGLING, UnitTypeId.MUTALISK})
-        return chain.from_iterable(
-            micro_unit(u, t)
-            for u, t in zip(army, cycle(targets))
-        )
+        return chain.from_iterable(micro_unit(u, t) for u, t in zip(army, cycle(targets)))
 
     def micro_queens(self) -> Iterable[Action]:
         queens = (q for q in self.mediator.get_own_army_dict[UnitTypeId.QUEEN] if q.energy >= 25 and q.is_idle)
         hatcheries = (h for h in self.townhalls if h.is_ready and not h.has_buff(BuffId.QUEENSPAWNLARVATIMER))
-        return (
-            UseAbility(queen, AbilityId.EFFECT_INJECTLARVA, hatch)
-            for queen, hatch in zip(queens, hatcheries)
-        )
+        return (UseAbility(queen, AbilityId.EFFECT_INJECTLARVA, hatch) for queen, hatch in zip(queens, hatcheries))
 
     def random_scout_targets(self) -> Iterable[Point2]:
         a = self.game_info.playable_area
