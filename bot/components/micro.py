@@ -8,7 +8,7 @@ from sc2.ids.unit_typeid import UnitTypeId
 from sc2.position import Point2
 from sc2.unit import Unit
 
-from actions import Action, Attack, GatherResources, UseAbility
+from action import Action, Attack, GatherResources, UseAbility
 from .component import Component
 from .strategy import StrategyDecision
 
