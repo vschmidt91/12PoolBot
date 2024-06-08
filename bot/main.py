@@ -1,136 +1,51 @@
+from ares import AresBot
+from ares.behaviors.macro import AutoSupply, Mining, SpawnController
+from ares.consts import UnitRole
+
+import random
 from typing import Optional
 
-from ares import AresBot
-
-import math
-import random
-from collections import Counter
-from itertools import chain
-from typing import Dict, Iterable, List, Optional, Set
-
 import numpy as np
-from sc2.bot_ai import BotAI, Result
+from sc2.bot_ai import Result
+from sc2.dicts.unit_trained_from import UNIT_TRAINED_FROM
 from sc2.ids.ability_id import AbilityId
 from sc2.ids.buff_id import BuffId
 from sc2.ids.unit_typeid import UnitTypeId
 from sc2.ids.upgrade_id import UpgradeId
 from sc2.position import Point2
-from sc2.unit import Unit
-from sc2.units import Units
-
-SPEEDMINING_DISTANCE = 1.8
-HALF_OFFSET = Point2((.5, .5))
+from sc2.unit import Unit, UnitCommand
 
 
-def get_intersections(p0: Point2, r0: float, p1: Point2, r1: float) -> List[Point2]:
-    """yield the intersection points of two circles at points p0, p1 with radii r0, r1"""
-    p01 = p1 - p0
-    d = np.linalg.norm(p01)
-    if d == 0:
-        return []  # intersection empty or infinite
-    if d < abs(r0 - r1):
-        return []  # circles inside of each other
-    if r0 + r1 < d:
-        return []  # circles too far apart
-    a = (r0 ** 2 - r1 ** 2 + d ** 2) / (2 * d)
-    h = math.sqrt(r0 ** 2 - a ** 2)
-    pm = p0 + (a / d) * p01
-    po = (h / d) * np.array([p01.y, -p01.x])
-    return [pm + po, pm - po]
+def larva_from(hatchery: Unit) -> float:
+    larva = 0.0
+    if hatchery.is_ready:
+        larva += 1 / 11
+        if hatchery.has_buff(BuffId.QUEENSPAWNLARVATIMER):
+            larva += 3 / 29
+    return larva
+
 
 class TwelvePoolBot(AresBot):
+
     def __init__(self, game_step_override: Optional[int] = None):
-        """Initiate custom bot
-
-        Parameters
-        ----------
-        game_step_override :
-            If provided, set the game_step to this value regardless of how it was
-            specified elsewhere
-        """
-        self.greeting = "(glhf)"
-        self.speedmining_enabled: bool = True
-        self.research_speed = True
-        self.tags: Set[str] = set()
-        self.gas_harvester_target = 2
-
-        self.greeting_sent: bool = False
-        self.pool_drone: Optional[Unit] = None
         super().__init__(game_step_override)
 
     """
-    === <CALLBACKS>
+    === <OVERRIDES>
     """
 
     async def on_step(self, iteration: int) -> None:
         await super().on_step(iteration)
-
-        if not any(self.townhalls):
+        if not self.townhalls:
             await self.surrender()
-            return
-
-        if any(self.enemy_structures.flying) and not any(self.enemy_structures.not_flying):
-            # high performance mode
-            await self.add_tag('cleanup')
-            self.speedmining_enabled = False
-            self.army_type = UnitTypeId.MUTALISK
+        elif not self.build_order_runner.build_completed:
+            self.register_behavior(Mining())
         else:
-            self.speedmining_enabled = self.time < 8 * 60
-            self.army_type = UnitTypeId.ZERGLING
-
-        self.transfer_from: List[Unit] = list()
-        self.transfer_to: List[Unit] = list()
-        self.transfer_from_gas: List[Unit] = list()
-        self.transfer_to_gas: List[Unit] = list()
-        self.inject_queens: List[Unit] = list()
-        self.idle_hatches: List[Unit] = list()
-        self.drone: Optional[Unit] = None
-        self.hatch_morphing: Optional[Unit] = None
-        self.pool: Optional[Unit] = None
-        self.spire: Optional[Unit] = None
-        self.abilities: Counter[AbilityId] = Counter(o.ability.exact_id for u in self.all_own_units for o in u.orders)
-        self.invisible_enemy_start_locations: List[Point2] = [p for p in self.enemy_start_locations if not self.is_visible(p)]
-        self.resource_by_tag = {unit.tag: unit for unit in chain(self.mineral_field, self.gas_buildings)}
-
-        if 3 < self.time and not self.greeting_sent:
-            await self.client.chat_send(self.greeting, False)
-            self.greeting_sent = True
-
-        if self.research_speed and 105 < self.time and self.abilities[AbilityId.RESEARCH_ZERGLINGMETABOLICBOOST] < 1 and UpgradeId.ZERGLINGMOVEMENTSPEED not in self.state.upgrades:
-            await self.add_tag('latespeed')
-
-        for structure in self.structures:
-            self.micro_structure(structure)
-
-        for worker in self.workers:
-            self.micro_worker(worker)
-
-        for unit in self.units:
-            if unit.type_id == UnitTypeId.QUEEN:
-                self.inject_queens.append(unit)
-            elif unit.type_id == self.army_type:
-                self.micro_army(unit)
-
-        self.inject_larvae()
-
-        if self.build_order():
-            build_army = True
-            if self.army_type == UnitTypeId.MUTALISK:
-                self.gas_harvester_target = 3
-                build_army = self.build_spire()
-            elif self.research_speed and self.vespene < 96 and self.abilities[AbilityId.RESEARCH_ZERGLINGMETABOLICBOOST] < 1 and UpgradeId.ZERGLINGMOVEMENTSPEED not in self.state.upgrades:
-                self.gas_harvester_target = 2
-            else:
-                self.gas_harvester_target = 0
-            self.macro(build_army)
+            await self.macro()
+            self.micro()
 
     async def on_start(self) -> None:
         await super().on_start()
-        self.geyser = self.vespene_geyser.closest_to(self.start_location)
-        self.pool_position = await self.get_pool_position()
-        self.spire_position = self.get_spire_position()
-        self.speedmining_positions = self.get_speedmining_positions()
-        self.split_workers()
 
     async def on_end(self, game_result: Result) -> None:
         await super().on_end(game_result)
@@ -140,6 +55,8 @@ class TwelvePoolBot(AresBot):
 
     async def on_unit_created(self, unit: Unit) -> None:
         await super().on_unit_created(unit)
+        if unit.type_id in {UnitTypeId.ZERGLING, UnitTypeId.MUTALISK}:
+            self.mediator.assign_role(tag=unit.tag, role=UnitRole.ATTACKING)
 
     async def on_unit_destroyed(self, unit_tag: int) -> None:
         await super().on_unit_destroyed(unit_tag)
@@ -148,134 +65,139 @@ class TwelvePoolBot(AresBot):
         await super().on_unit_took_damage(unit, amount_damage_taken)
 
     """
-    === </CALLBACKS>
+    === </OVERRIDES>
     """
 
     async def surrender(self) -> None:
-        await self.add_tag('gg')
         await self.client.chat_send('(gg)', False)
         await self.client.quit()
 
-    def build_spire(self) -> bool:
-        main = self.townhalls.closest_to(self.start_location)
-        if self.spire:
-            return self.spire.is_ready
-        elif main.type_id == UnitTypeId.LAIR:
-            if self.abilities[AbilityId.ZERGBUILD_SPIRE] < 1 and self.can_afford(UnitTypeId.SPIRE) and self.drone:
-                self.drone(AbilityId.ZERGBUILD_SPIRE, self.spire_position)
-        elif self.abilities[AbilityId.UPGRADETOLAIR_LAIR] < 1 and self.can_afford(UnitTypeId.LAIR) and main.is_idle:
-            main(AbilityId.UPGRADETOLAIR_LAIR)
-        return False
+    async def macro(self) -> Optional[UnitCommand]:
+        go_mutas = self.enemy_structures.flying and not self.enemy_structures.not_flying
+        research_speed = self.vespene < 96 and not self.already_pending_upgrade(UpgradeId.ZERGLINGMOVEMENTSPEED)
+        gas_harvester_target = 3 if research_speed or go_mutas else 0
+        army_composition = self.get_army_composition(go_mutas)
+        self.register_behavior(Mining(workers_per_gas=gas_harvester_target))
+        self.register_behavior(AutoSupply(base_location=self.start_location))
+        return (
+            await self.make_tech(go_mutas)
+            or self.get_upgrades()
+            or self.expand()
+            or self.train_queen()
+            or self.train_army(army_composition)
+        )
 
-    def build_order(self) -> bool:
-        if not self.pool and self.abilities[AbilityId.ZERGBUILD_SPAWNINGPOOL] < 1:
-            if 200 <= self.minerals and self.pool_drone:
-                self.pool_drone.build(UnitTypeId.SPAWNINGPOOL, self.pool_position)
-            elif 170 <= self.minerals and not self.pool_drone and self.drone:
-                self.pool_drone = self.drone
-                self.pool_drone.move(self.pool_position)
-        elif self.supply_used < 13:
-            self.train(UnitTypeId.DRONE)
-        elif self.research_speed and self.gas_buildings.amount < 1 and self.abilities[AbilityId.ZERGBUILD_EXTRACTOR] < 1:
-            if self.drone:
-                self.drone.build_gas(self.geyser)
-        elif not self.research_speed and self.supply_used < 14:
-            self.train(UnitTypeId.DRONE)
-        elif self.supply_cap == 14 and self.abilities[AbilityId.LARVATRAIN_OVERLORD] < 1:
-            self.train(UnitTypeId.OVERLORD)
-        return self.pool is not None and self.pool.is_ready
+    def expand(self) -> Optional[UnitCommand]:
+        if (
+            self.can_afford(UnitTypeId.HATCHERY)
+            and not self.already_pending(UnitTypeId.HATCHERY)
+            and (builder := next((u for u in self.workers.collecting), None))
+            and (target := self.get_next_expansion())
+        ):
+            self.mediator.assign_role(tag=builder.tag, role=UnitRole.PERSISTENT_BUILDER)
+            return builder.build(UnitTypeId.HATCHERY, target)
 
-    def macro(self, build_army: bool) -> None:
-        larva_per_second = 0.0
-        for hatchery in self.townhalls:
-            if hatchery.is_ready:
-                larva_per_second += 1 / 11
-                if hatchery.has_buff(BuffId.QUEENSPAWNLARVATIMER):
-                    larva_per_second += 3 / 29
+    async def make_tech(self, make_mutas: bool) -> Optional[UnitCommand]:
+        if self.tech_requirement_progress(UnitTypeId.ZERGLING) < 1:
+            return await self.ensure_structure_exists(UnitTypeId.SPAWNINGPOOL)
+        elif not make_mutas:
+            return None
+        elif self.tech_requirement_progress(UnitTypeId.SPIRE) < 1:
+            return self.ensure_lair_exists()
+        else:
+            return await self.ensure_structure_exists(UnitTypeId.SPIRE)
+
+    def train_queen(self) -> Optional[UnitCommand]:
+        if (
+            self.can_afford(UnitTypeId.QUEEN)
+            and not self.already_pending(UnitTypeId.QUEEN)
+            and len(self.mediator.get_own_army_dict[UnitTypeId.QUEEN]) < self.townhalls.amount
+            and 2 <= self.supply_left
+            and (hatch := next((t for t in self.townhalls if t.is_idle), None))
+        ):
+            return hatch.train(UnitTypeId.QUEEN)
+
+    def get_upgrades(self) -> Optional[UnitCommand]:
+        if (
+            self.can_afford(UpgradeId.ZERGLINGMOVEMENTSPEED)
+            and not self.already_pending_upgrade(UpgradeId.ZERGLINGMOVEMENTSPEED)
+            and (
+                pool := next(
+                    (p for p in self.mediator.get_own_structures_dict[UnitTypeId.SPAWNINGPOOL] if p.is_idle), None
+                )
+            )
+        ):
+            return pool.research(UpgradeId.ZERGLINGMOVEMENTSPEED)
+
+    async def ensure_structure_exists(self, type_id: UnitTypeId) -> Optional[UnitCommand]:
+        placement_near = self.start_location.towards(self.game_info.map_center, 8)
+        trainer_type_id = min(UNIT_TRAINED_FROM[type_id], key=lambda v: v.value)
+        if (
+            self.can_afford(type_id)
+            and not self.already_pending(type_id)
+            and (trainer := next((t for t in self.mediator.get_own_army_dict[trainer_type_id]), None))
+            and (placement := await self.find_placement(type_id, near=placement_near))
+        ):
+            self.mediator.assign_role(tag=trainer.tag, role=UnitRole.PERSISTENT_BUILDER)
+            return trainer.build(type_id, placement)
+
+    def ensure_lair_exists(self) -> Optional[UnitCommand]:
+        if (
+            self.can_afford(UnitTypeId.LAIR)
+            and not self.already_pending(UnitTypeId.LAIR)
+            and (
+                hatch := next(
+                    (t for t in self.mediator.get_own_structures_dict[UnitTypeId.HATCHERY] if t.is_idle), None
+                )
+            )
+        ):
+            return hatch(AbilityId.UPGRADETOLAIR_LAIR)
+
+    def should_drone(self) -> bool:
+        larva_per_second = sum(larva_from(h) for h in self.townhalls)
         minerals_for_lings = 50 * 60 * larva_per_second  # maximum we can possibly spend on lings
-        mineral_starved = self.minerals < 150 and self.state.score.collection_rate_minerals < 1.2 * minerals_for_lings  # aim for a 20% surplus
-        drone_max = sum(hatch.ideal_harvesters for hatch in self.townhalls)
-        queen_missing = self.townhalls.amount - (len(self.inject_queens) + self.abilities[AbilityId.TRAINQUEEN_QUEEN])
+        max_spending = minerals_for_lings  # aim for a 20% surplus
+        should_drone = (
+            self.minerals < 150
+            and self.state.score.collection_rate_minerals < 1.2 * max_spending  # aim for a 20% surplus
+            and self.state.score.food_used_economy < sum(h.ideal_harvesters for h in self.townhalls)
+            and not self.already_pending(UnitTypeId.DRONE)
+        )
+        return should_drone
+
+    def get_army_composition(self, make_mutas: bool) -> dict:
+        if self.should_drone():
+            return {
+                UnitTypeId.DRONE: {"proportion": 1.0, "priority": 0},
+            }
+        elif make_mutas:
+            return {
+                UnitTypeId.MUTALISK: {"proportion": 0.5, "priority": 0},
+                UnitTypeId.ZERGLING: {"proportion": 0.5, "priority": 0},
+            }
+        else:
+            return {
+                UnitTypeId.ZERGLING: {"proportion": 1.0, "priority": 0},
+            }
+
+    def train_army(self, army_composition: dict) -> Optional[UnitCommand]:
         if self.larva and 1 <= self.supply_left:
-            max_pending_drones = 1
-            if self.state.score.food_used_economy < drone_max and mineral_starved and self.abilities[
-                AbilityId.LARVATRAIN_DRONE] < max_pending_drones:
-                self.train(UnitTypeId.DRONE, max_pending_drones - self.abilities[AbilityId.LARVATRAIN_DRONE])
-            if build_army:
-                self.train(self.army_type, self.larva.amount)
-        elif queen_missing and 2 <= self.supply_left:
-            for hatch in self.idle_hatches[:queen_missing]:
-                hatch.train(UnitTypeId.QUEEN)
-        elif self.research_speed and self.pool and self.pool.is_idle and UpgradeId.ZERGLINGMOVEMENTSPEED not in self.state.upgrades:
-            self.pool.research(UpgradeId.ZERGLINGMOVEMENTSPEED)
-        elif self.can_afford(UnitTypeId.HATCHERY) and self.abilities[
-            AbilityId.ZERGBUILD_HATCHERY] < 1 and not self.hatch_morphing:
-            target = self.get_next_expansion()
-            if self.drone and target:
-                self.drone.build(UnitTypeId.HATCHERY, target)
-        elif self.supply_left < self.larva.amount and self.abilities[AbilityId.LARVATRAIN_OVERLORD] < 1:
-            self.train(UnitTypeId.OVERLORD)
+            self.register_behavior(SpawnController(army_composition))
+            return "making army"
 
-    def micro_structure(self, unit: Unit) -> None:
-        if not unit.is_ready and unit.health_percentage < 0.1:
-            unit(AbilityId.CANCEL)
-        elif unit.is_vespene_geyser:
-            if unit.is_ready and unit.assigned_harvesters + 1 < self.gas_harvester_target:
-                self.transfer_to_gas.extend(
-                    unit for _ in range(unit.assigned_harvesters + 1, self.gas_harvester_target))
-            elif self.gas_harvester_target < unit.assigned_harvesters:
-                self.transfer_from_gas.extend(unit for _ in range(self.gas_harvester_target, unit.assigned_harvesters))
-        elif unit.type_id == UnitTypeId.HATCHERY:
-            if unit.is_ready:
-                if unit.is_idle:
-                    self.idle_hatches.append(unit)
-                if 0 < unit.surplus_harvesters:
-                    self.transfer_from.extend(unit for _ in range(0, unit.surplus_harvesters))
-                elif unit.surplus_harvesters < 0:
-                    self.transfer_to.extend(unit for _ in range(unit.surplus_harvesters, 0))
-            else:
-                self.hatch_morphing = unit
-        elif unit.type_id == UnitTypeId.SPAWNINGPOOL:
-            self.pool = unit
-        elif unit.type_id == UnitTypeId.SPIRE:
-            self.spire = unit
+    def micro(self) -> None:
+        self.micro_army()
+        self.micro_queens()
 
-    def micro_worker(self, unit: Unit) -> None:
-        if unit.is_idle:
-            if any(self.mineral_field) and (not self.pool_drone or self.pool_drone.tag != unit.tag):
-                townhall = self.townhalls.closest_to(unit)
-                patch = self.mineral_field.closest_to(townhall)
-                unit.gather(patch)
-        elif any(self.transfer_from) and any(self.transfer_to) and unit.order_target == self.transfer_from[0].tag:
-            patch = self.mineral_field.closest_to(self.transfer_to.pop(0))
-            self.transfer_from.pop(0)
-            unit.gather(patch)
-        elif any(self.transfer_from_gas) and unit.order_target in self.gas_buildings.tags and not unit.is_carrying_resource:
-            unit.stop()
-            self.transfer_from_gas.pop(0)
-        elif any(self.transfer_to_gas) and not unit.is_carrying_resource and len(unit.orders) < 2 and unit.order_target not in self.close_minerals:
-            unit.gather(self.transfer_to_gas.pop(0))
-        elif not unit.is_carrying_resource and len(unit.orders) == 1 and unit.order_target not in self.close_minerals:
-            self.drone = unit
-        if self.speedmining_enabled and len(unit.orders) == 1:
-            target = None
-            if unit.is_returning:
-                target = self.townhalls.closest_to(unit)
-                move_target = target.position.towards(unit.position, target.radius + unit.radius)
-            elif unit.is_gathering:
-                target = self.resource_by_tag.get(unit.order_target)
-                if target:
-                    move_target = self.speedmining_positions[target.position]
-            if target and 2 * unit.radius < unit.distance_to(move_target) < SPEEDMINING_DISTANCE:
-                unit.move(move_target)
-                unit(AbilityId.SMART, target, True)
-
-    def micro_army(self, unit: Unit) -> None:
-        if unit.is_idle or unit.is_using_ability(AbilityId.EFFECT_INJECTLARVA):
-            if self.enemy_structures:
+    def micro_army(self) -> None:
+        invisible_enemy_start_locations = [p for p in self.enemy_start_locations if not self.is_visible(p)]
+        for unit in self.mediator.get_units_from_role(role=UnitRole.ATTACKING):
+            if not unit.is_idle:
+                pass
+            elif self.enemy_structures:
                 unit.attack(self.enemy_structures.random.position)
-            elif any(self.invisible_enemy_start_locations):
-                unit.attack(random.choice(self.invisible_enemy_start_locations))
+            elif any(invisible_enemy_start_locations):
+                unit.attack(random.choice(invisible_enemy_start_locations))
             else:
                 a = self.game_info.playable_area
                 target = np.random.uniform((a.x, a.y), (a.right, a.top))
@@ -283,85 +205,12 @@ class TwelvePoolBot(AresBot):
                 if self.in_pathing_grid(target) and not self.is_visible(target):
                     unit.attack(target)
 
-    def inject_larvae(self):
-        hatches: List[Unit] = sorted(self.townhalls.ready, key=lambda u: u.tag)
-        self.inject_queens.sort(key=lambda u: u.tag)
-        for hatch, queen in zip(hatches, self.inject_queens):
-            if 25 <= queen.energy and hatch.is_ready:
-                queen(AbilityId.EFFECT_INJECTLARVA, hatch)
-            elif not queen.is_moving:
-                target = hatch.position.towards(self.game_info.map_center, hatch.radius + queen.radius)
-                if 1 < queen.distance_to(target):
-                    queen.move(target)
-
-    async def add_tag(self, tag: str):
-        """tags the replay"""
-        if tag not in self.tags:
-            await self.client.chat_send(f'Tag:{tag}@{self.time_formatted}', True)
-            self.tags.add(tag)
+    def micro_queens(self) -> None:
+        inject_queens = (q for q in self.mediator.get_own_army_dict[UnitTypeId.QUEEN] if q.energy >= 25 and q.is_idle)
+        inject_hatches = (h for h in self.townhalls if h.is_ready and not h.has_buff(BuffId.QUEENSPAWNLARVATIMER))
+        for queen, hatch in zip(inject_queens, inject_hatches):
+            queen(AbilityId.EFFECT_INJECTLARVA, hatch)
 
     def get_next_expansion(self) -> Optional[Point2]:
-        """find closest untaken expansion"""
-        townhall_positions = {townhall.position for townhall in self.townhalls}
-
-        def distance(b: Point2) -> float:
-            d = 0.0
-            d += b.distance_to(self.start_location)
-            d += b.distance_to(self.main_base_ramp.bottom_center)
-            return d
-
-        base = min(
-            (b for b in self.expansion_locations_list if b not in townhall_positions),
-            key=distance,
-            default=None
-        )
-        return base
-
-    def get_speedmining_positions(self) -> Dict[Point2, Point2]:
-        """fix workers bumping into adjacent minerals by slightly shifting the move commands"""
-        targets = dict()
-        worker_radius = self.workers[0].radius
-        expansions: Dict[Point2, Units] = self.expansion_locations_dict
-        for base, resources in expansions.items():
-            for resource in resources:
-                mining_radius = resource.radius + worker_radius
-                target = resource.position.towards(base, mining_radius)
-                for resource2 in resources.closer_than(mining_radius, target):
-                    points = get_intersections(resource.position, mining_radius, resource2.position,
-                                               resource2.radius + worker_radius)
-                    target = min(points, key=lambda p: p.distance_to(self.start_location), default=target)
-                targets[resource.position] = target
-        return targets
-
-    async def get_pool_position(self) -> Point2:
-        """find position for the spawning pool"""
-        for i in range(100):
-            position = self.start_location.towards_with_random_angle(self.game_info.map_center, -9)
-            position.rounded.offset(HALF_OFFSET)
-            if await self.can_place_single(UnitTypeId.SPAWNINGPOOL, position):
-                return position
-        raise Exception('could not find pool position')
-
-    def get_spire_position(self) -> Point2:
-        """find position for the spire"""
-        position = self.start_location.towards(self.game_info.map_center, 8)
-        position.rounded.offset(HALF_OFFSET)
-        return position
-
-    def split_workers(self) -> None:
-        """distribute initial workers on mineral patches"""
-        minerals = self.expansion_locations_dict[self.start_location].mineral_field.sorted_by_distance_to(
-            self.start_location)
-        self.close_minerals = {m.tag for m in minerals[0:4]}
-        assigned: Set[int] = set()
-        for i in range(self.workers.amount):
-            patch = minerals[i % len(minerals)]
-            if i < len(minerals):
-                # first, each patch gets one worker closest to it
-                worker = self.workers.tags_not_in(assigned).closest_to(patch)
-            else:
-                # the remaining workers get longer paths
-                # this usually results in double stacking without having to spam orders
-                worker = self.workers.tags_not_in(assigned).furthest_to(patch)
-            worker.gather(patch)
-            assigned.add(worker.tag)
+        townhall_positions = {th.position for th in self.townhalls}
+        return next((p for p, d in self.mediator.get_own_expansions if p not in townhall_positions), None)
