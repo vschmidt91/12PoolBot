@@ -2,9 +2,9 @@ from ares import AresBot
 
 from itertools import chain
 
-from components.strategy import Strategy
-from components.micro import Micro
-from components.macro import Macro
+from .components.strategy import Strategy
+from .components.micro import Micro
+from .components.macro import Macro
 
 
 class TwelvePoolBot(Strategy, Micro, Macro, AresBot):
