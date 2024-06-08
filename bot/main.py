@@ -75,7 +75,7 @@ class TwelvePoolBot(AresBot):
 
     async def macro(self) -> Optional[UnitCommand]:
         go_mutas = self.enemy_structures.flying and not self.enemy_structures.not_flying
-        research_speed = self.vespene < 96 and not self.already_pending_upgrade(UpgradeId.ZERGLINGMOVEMENTSPEED)
+        research_speed = self.vespene < 92 and not self.already_pending_upgrade(UpgradeId.ZERGLINGMOVEMENTSPEED)
         gas_harvester_target = 3 if research_speed or go_mutas else 0
         army_composition = self.get_army_composition(go_mutas)
         self.register_behavior(Mining(workers_per_gas=gas_harvester_target))
