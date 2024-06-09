@@ -37,6 +37,7 @@ class Macro(Component):
         if (
             self.can_afford(UnitTypeId.HATCHERY)
             and not self.already_pending(UnitTypeId.HATCHERY)
+            and self.already_pending_upgrade(UpgradeId.ZERGLINGMOVEMENTSPEED)
             and (builder := next((u for u in self.workers.collecting), None))
             and (target := self.get_next_expansion())
         ):

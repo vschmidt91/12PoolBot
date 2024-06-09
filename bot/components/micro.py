@@ -8,37 +8,52 @@ from sc2.ids.unit_typeid import UnitTypeId
 from sc2.position import Point2
 from sc2.unit import Unit
 
-from ..action import Action, Attack, GatherResources, UseAbility
+from ..action import Action, Attack, Move, UseAbility
+from ..combat_predictor import CombatPrediction
 from .component import Component
 from .strategy import StrategyDecision
+from ..utils.numerics import normalize, gradient2d
 
 
 class Micro(Component):
-    def micro(self, strategy: StrategyDecision) -> Iterable[Action]:
+
+    _target_dict: [int, Point2] = dict()
+
+    def micro(self, combat_prediction: CombatPrediction) -> Iterable[Action]:
         return chain(
-            self.micro_workers(strategy),
-            self.micro_army(),
+            self.micro_army(combat_prediction),
             self.micro_queens(),
         )
 
-    def micro_workers(self, strategy: StrategyDecision) -> Iterable[Action]:
-        workers_per_gas = 3 if strategy.gather_vespene else 0
-        yield GatherResources(workers_per_gas)
+    def micro_army(self, combat_prediction: CombatPrediction) -> Iterable[Action]:
 
-    def micro_army(self) -> Iterable[Action]:
-        invisible_enemy_start_locations = [p for p in self.enemy_start_locations if not self.is_visible(p)]
-        targets = chain(
+        start_locations = sorted(self.enemy_start_locations, key=self.is_visible, reverse=True)
+        attack_target = next(chain(
             (s.position for s in self.enemy_structures),
-            invisible_enemy_start_locations,
-            self.random_scout_targets(),
-        )
+            start_locations,
+        ))
 
-        def micro_unit(unit: Unit, target: Point2) -> Iterable[Action]:
+        for unit in self.units({UnitTypeId.ZERGLING, UnitTypeId.MUTALISK}):
+
             if unit.is_idle:
-                yield Attack(unit, target)
+                self._target_dict.pop(unit.tag, None)
+            target = self._target_dict.setdefault(unit.tag, attack_target)
 
-        army = self.units({UnitTypeId.ZERGLING, UnitTypeId.MUTALISK})
-        return chain.from_iterable(micro_unit(u, t) for u, t in zip(army, cycle(targets)))
+            x, y = unit.position.rounded
+            tx, ty = target.rounded
+            local_confidence = np.mean((
+                combat_prediction.confidence[x, y],
+                combat_prediction.confidence[tx, ty],
+            ))
+
+            if local_confidence > -1/2:
+                yield Attack(unit, target)
+            else:
+                self._target_dict.pop(unit.tag, None)
+                retreat = normalize(
+                    gradient2d(combat_prediction.retreat_potential, x, y)
+                )
+                yield Move(unit, Point2(unit.position + 4 * retreat))
 
     def micro_queens(self) -> Iterable[Action]:
         queens = (q for q in self.mediator.get_own_army_dict[UnitTypeId.QUEEN] if q.energy >= 25 and q.is_idle)

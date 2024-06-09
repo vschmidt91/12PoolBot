@@ -1,5 +1,4 @@
 from ares import AresBot
-from ares.behaviors.macro import Mining
 from ares.consts import UnitRole
 
 from dataclasses import dataclass
@@ -32,6 +31,15 @@ class Attack(Action):
 
 
 @dataclass
+class Move(Action):
+    unit: Unit
+    target: Point2
+
+    async def execute(self, bot: AresBot) -> bool:
+        return self.unit.move(self.target)
+
+
+@dataclass
 class UseAbility(Action):
     unit: Unit
     ability: AbilityId
@@ -55,12 +63,3 @@ class Build(Action):
             return self.unit.build(self.type_id, placement)
         else:
             return False
-
-
-@dataclass
-class GatherResources(Action):
-    workers_per_gas: int = 3
-
-    async def execute(self, bot: AresBot) -> bool:
-        bot.register_behavior(Mining(workers_per_gas=self.workers_per_gas))
-        return True
