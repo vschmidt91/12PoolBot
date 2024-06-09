@@ -173,7 +173,7 @@ def _coarse_grid_correction(
     # e = skimage.transform.rescale(ec, 2)
     # e = resize(ec, numpy.multiply(r.shape, 2))
 
-    e = e[:r.shape[0],:r.shape[1]]
+    e = e[:r.shape[0], :r.shape[1]]
 
 
     # optimized

@@ -7,7 +7,7 @@ import skimage.draw
 from sc2.unit import Unit
 from sc2.position import Point2
 
-from extensions.poisson_multigrid import MultigridMode, mg_opt, divergence
+from .extensions.poisson_multigrid import MultigridMode, mg_opt, divergence
 
 
 @dataclass

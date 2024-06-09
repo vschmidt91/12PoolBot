@@ -1,5 +1,5 @@
-import dataclasses
-import functools
+from dataclasses import dataclass
+from functools import total_ordering
 import heapq
 import math
 import typing
@@ -9,8 +9,8 @@ import numpy
 Point = tuple[int, int]
 
 
-@functools.total_ordering
-@dataclasses.dataclass
+@total_ordering
+@dataclass
 class HeapElement:
     position: Point
     distance: float
@@ -19,7 +19,7 @@ class HeapElement:
         return self.distance < other.distance
 
 
-@dataclasses.dataclass
+@dataclass
 class DijkstraOutput:
     dist: numpy.ndarray
     prev: numpy.ndarray
@@ -35,7 +35,7 @@ class DijkstraOutput:
         return path
 
 
-def _neighbours(x: int, y: int, w: int, h: int) -> typing.Iterable[tuple[int, int]]:
+def _neighbours(x: int, y: int, w: int, h: int) -> typing.Iterable[Point]:
     if 0 < x:
         yield (x - 1, y)
     if 0 < y:
@@ -50,7 +50,8 @@ def shortest_paths_opt(
     cost: numpy.ndarray,
     sources: list[Point],
 ) -> DijkstraOutput:
-    dist = numpy.full_like(cost, math.inf)
+
+    dist = numpy.full_like(cost, math.inf, dtype=float)
     prev = numpy.full_like(cost, None, dtype=object)
 
     ss = numpy.array(sources)
@@ -60,7 +61,7 @@ def shortest_paths_opt(
     while Q:
         elem = heapq.heappop(Q)
         u = elem.position
-        du = dist[u]
+        du = float(dist[u])
         if elem.distance != du:
             continue
         for v in _neighbours(*u, *cost.shape):
