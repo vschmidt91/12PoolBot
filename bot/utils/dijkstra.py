@@ -35,12 +35,7 @@ class DijkstraOutput:
         return path
 
 
-def _neighbours(
-    p: Point,
-    shape: Point,
-) -> typing.Iterable[Point]:
-    x, y = p
-    w, h = shape
+def _neighbours(x: int, y: int, w: int, h: int) -> typing.Iterable[tuple[int, int]]:
     if 0 < x:
         yield (x - 1, y)
     if 0 < y:
@@ -68,7 +63,7 @@ def shortest_paths_opt(
         du = dist[u]
         if elem.distance != du:
             continue
-        for v in _neighbours(u, cost.shape):
+        for v in _neighbours(*u, *cost.shape):
             alt = du + cost[v]
             if dist[v] <= alt:
                 continue
