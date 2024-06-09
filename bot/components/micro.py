@@ -11,7 +11,6 @@ from sc2.unit import Unit
 from ..action import Action, Attack, Move, UseAbility
 from ..combat_predictor import CombatPrediction
 from .component import Component
-from .strategy import StrategyDecision
 from ..utils.numerics import normalize, gradient2d
 
 
