@@ -7,7 +7,7 @@
 
 # Save the game opening and result to disk?
 # Setting to `True` allows Ares to select a new opening after defeat
-UseData: True
+UseData: False
 # How should we choose a build? Cycle is the only option for now
 BuildSelection: Cycle
 # For each Race / Opponent ID choose a build selection
@@ -57,7 +57,3 @@ Builds:
             - 13 drone
             - 14 extractor
             - 13 overlord
-
-
-
-
