@@ -58,22 +58,6 @@ class CombatPredictor:
 
         return civilian_presence
 
-    def civilian_presence(self, context: CombatPredictionContext) -> np.ndarray:
-        civilian_presence = np.zeros_like(context.pathing, dtype=float)
-        for civilian in context.civilians:
-            d = skimage.draw.disk(
-                center=civilian.position,
-                radius=max(1.0, civilian.radius),
-                shape=context.pathing.shape,
-            )
-            civilian_presence[d] += (-1.0 if civilian.is_enemy else +1.0) * civilian.shield_health_percentage
-
-        return mg_opt(
-            np.zeros_like(context.pathing, dtype=float),
-            civilian_presence,
-            context.pathing,
-        )
-
     def combat_presence(self, context: CombatPredictionContext) -> CombatPresence:
 
         def draw(u, r): return skimage.draw.disk(center=u.position, radius=r, shape=context.pathing.shape)
