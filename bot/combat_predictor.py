@@ -39,11 +39,8 @@ class CombatPredictor:
         confidence = combat_outcome / (combat_presence.force + combat_presence.enemy_force + 1)
         if self._retreat_potential is None:
             self._retreat_potential = np.zeros_like(context.pathing, dtype=float)
-        self._retreat_potential = mg_opt(
-            self._retreat_potential,
-            civilian_presence,
-            context.pathing,
-        )
+        rhs = civilian_presence - np.mean(civilian_presence)
+        self._retreat_potential = mg_opt(self._retreat_potential, rhs, context.pathing)
         return CombatPrediction(civilian_presence, combat_outcome, confidence, self._retreat_potential)
 
     def civilian_presence(self, context: CombatPredictionContext) -> np.ndarray:
