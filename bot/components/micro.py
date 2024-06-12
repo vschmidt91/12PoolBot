@@ -14,6 +14,24 @@ from .component import Component
 from ..utils.numerics import normalize, gradient2d
 
 
+def retreat_target(p: Point2, potential: np.ndarray, pathing: np.ndarray) -> Point2 | None:
+    x, y = p.rounded
+    gradient = normalize(
+        gradient2d(potential, x, y)
+    )
+    retreat_to = Point2(p + 4 * gradient)
+    if pathing[x, y]:
+        return retreat_to
+    for i in range(10):
+        sigma = np.sqrt(1+i)
+        p = np.random.normal(loc=p, scale=sigma)
+        p = np.clip(p, (0, 0), pathing.shape)
+        px, py = p.astype(int)
+        if pathing[x, y] and potential[px, py] > potential[x, y]:
+            return retreat_to
+    return None
+
+
 class Micro(Component):
 
     _target_dict: [int, Point2] = dict()
@@ -31,6 +49,7 @@ class Micro(Component):
             (s.position for s in self.enemy_structures),
             start_locations,
         ))
+        pathing = self.game_info.pathing_grid.data_numpy.T
 
         for unit in self.units({UnitTypeId.ZERGLING, UnitTypeId.MUTALISK}):
 
@@ -42,17 +61,18 @@ class Micro(Component):
             tx, ty = target.rounded
             local_confidence = np.mean((
                 combat_prediction.confidence[x, y],
-                combat_prediction.confidence[tx, ty],
+                # combat_prediction.confidence[tx, ty],
             ))
 
             if local_confidence > -1/2:
                 yield Attack(unit, target)
             else:
                 self._target_dict.pop(unit.tag, None)
-                retreat = normalize(
-                    gradient2d(combat_prediction.retreat_potential, x, y)
-                )
-                yield Move(unit, Point2(unit.position + 4 * retreat))
+                retreat_to = retreat_target(unit.position, combat_prediction.combat_outcome, pathing)
+                if retreat_to is None:
+                    retreat_to = retreat_target(unit.position, combat_prediction.civilian_presence, pathing)
+                if retreat_to is not None:
+                    yield Move(unit, retreat_to)
 
     def micro_queens(self) -> Iterable[Action]:
         queens = (q for q in self.mediator.get_own_army_dict[UnitTypeId.QUEEN] if q.energy >= 25 and q.is_idle)

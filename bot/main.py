@@ -1,4 +1,4 @@
-from ares import AresBot
+from ares import AresBot, DEBUG
 
 from itertools import chain
 
@@ -6,6 +6,7 @@ from .components.strategy import Strategy
 from .components.micro import Micro
 from .components.macro import Macro
 from .combat_predictor import CombatPredictor, CombatPredictionContext
+from .utils.debug import save_map
 
 
 class TwelvePoolBot(Strategy, Micro, Macro, AresBot):
@@ -15,9 +16,12 @@ class TwelvePoolBot(Strategy, Micro, Macro, AresBot):
     async def on_start(self) -> None:
         await super().on_start()
 
+        if self.config[DEBUG]:
+            save_map(self.game_info, "resources")
+
+
     async def on_step(self, iteration: int) -> None:
         await super().on_step(iteration)
-
 
         strategy = self.decide_strategy()
         combat_prediction = self.combat_predictor.predict(self.prediction_context)

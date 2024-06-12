@@ -5,7 +5,7 @@ import numpy as np
 import skimage.draw
 from sc2.unit import Unit
 
-from .extensions.poisson_multigrid import mg_opt
+from .extensions.poisson_multigrid import mg_opt, convolve_jacobi
 
 
 @dataclass
@@ -36,11 +36,15 @@ class CombatPredictor:
         combat_presence = self.combat_presence(context)
         civilian_presence = self.civilian_presence(context)
         combat_outcome = combat_presence.force - combat_presence.enemy_force
-        confidence = combat_outcome / (combat_presence.force + combat_presence.enemy_force + 1)
+        confidence = combat_outcome / (combat_presence.force + combat_presence.enemy_force)
         if self._retreat_potential is None:
             self._retreat_potential = np.zeros_like(context.pathing, dtype=float)
-        rhs = civilian_presence - np.mean(civilian_presence)
-        self._retreat_potential = mg_opt(self._retreat_potential, rhs, context.pathing)
+
+        rhs = civilian_presence
+        b = context.pathing
+        b *= convolve_jacobi(b) > 0
+        self._retreat_potential = mg_opt(self._retreat_potential, rhs, b)
+
         return CombatPrediction(civilian_presence, combat_outcome, confidence, self._retreat_potential)
 
     def civilian_presence(self, context: CombatPredictionContext) -> np.ndarray:
@@ -59,8 +63,8 @@ class CombatPredictor:
 
         def draw(u, r): return skimage.draw.disk(center=u.position, radius=r, shape=context.pathing.shape)
 
-        force = np.zeros_like(context.pathing, dtype=float)
-        enemy_force = np.zeros_like(context.pathing, dtype=float)
+        force = np.ones_like(context.pathing, dtype=float)
+        enemy_force = np.ones_like(context.pathing, dtype=float)
 
         for unit in context.combatants:
 
