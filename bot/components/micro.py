@@ -73,9 +73,8 @@ class Micro(Component):
                         cost = np.where(pathing == 0, np.inf, np.exp(-combat_prediction.confidence))
                         paths = shortest_paths_opt(cost, sources)
 
-                prev = paths.prev[x, y]
-                if prev is not None:
-                    yield Move(unit, Point2(prev))
+                if retreat_path := paths.get_path((x, y), limit=3):
+                    yield Move(unit, Point2(retreat_path[-1]))
 
                 #
                 # self._target_dict.pop(unit.tag, None)

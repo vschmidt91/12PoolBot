@@ -25,12 +25,14 @@ class DijkstraOutput:
     prev: numpy.ndarray
     sources: set[Point]
 
-    def get_path(self, target: Point):
+    def get_path(self, target: Point, limit: int | None = None):
         path = []
         u = target
         if self.prev[u] or u in self.sources:
             while u:
                 path.append(u)
+                if limit is not None and len(path) >= limit:
+                    break
                 u = self.prev[u]
         return path
 
