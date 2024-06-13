@@ -57,14 +57,16 @@ class Micro(Component):
 
             x, y = unit.position.rounded
             tx, ty = target.rounded
+            mx, my = (0.5 * (unit.position + target)).rounded
             local_confidence = np.mean(
                 (
                     combat_prediction.confidence[x, y],
+                    # combat_prediction.confidence[mx, my],
                     # combat_prediction.confidence[tx, ty],
                 )
             )
 
-            if local_confidence >= 0:
+            if local_confidence > -1/2:
                 yield Attack(unit, target)
             else:
                 if paths is None:
