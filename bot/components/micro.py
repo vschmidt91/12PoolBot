@@ -19,7 +19,7 @@ def retreat_target(p: Point2, potential: np.ndarray, pathing: np.ndarray) -> Poi
     gradient = normalize(
         gradient2d(potential, x, y)
     )
-    retreat_to = Point2(p + 4 * gradient)
+    retreat_to = Point2(p + 2 * gradient)
     if pathing[x, y]:
         return retreat_to
     for i in range(10):
