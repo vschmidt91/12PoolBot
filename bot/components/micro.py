@@ -68,9 +68,9 @@ class Micro(Component):
                 yield Attack(unit, target)
             else:
                 self._target_dict.pop(unit.tag, None)
-                retreat_to = retreat_target(unit.position, combat_prediction.combat_outcome, pathing)
+                retreat_to = retreat_target(unit.position, combat_prediction.civilian_presence, pathing)
                 if retreat_to is None:
-                    retreat_to = retreat_target(unit.position, combat_prediction.civilian_presence, pathing)
+                    retreat_to = retreat_target(unit.position, combat_prediction.combat_outcome, pathing)
                 if retreat_to is not None:
                     yield Move(unit, retreat_to)
 
