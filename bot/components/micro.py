@@ -68,9 +68,10 @@ class Micro(Component):
                 yield Attack(unit, target)
             else:
                 if paths is None:
-                    cost = np.where(pathing == 0, np.inf, np.exp(-combat_prediction.confidence))
                     sources = [Point(w.position.rounded) for w in self.workers]
-                    paths = shortest_paths_opt(cost, sources)
+                    if any(sources):
+                        cost = np.where(pathing == 0, np.inf, np.exp(-combat_prediction.confidence))
+                        paths = shortest_paths_opt(cost, sources)
 
                 prev = paths.prev[x, y]
                 if prev is not None:

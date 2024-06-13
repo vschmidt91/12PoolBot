@@ -19,9 +19,9 @@ class Macro(Component):
             (
                 self.wait_for_build_order_completion()
                 or self.make_tech(strategy)
+                or self.train_queen()
                 or self.get_upgrades()
                 or self.train_army()
-                or self.train_queen()
                 or self.expand()
                 or self.morph_overlord()
                 or DoNothing()
@@ -35,13 +35,15 @@ class Macro(Component):
 
     def expand(self) -> Optional[Action]:
         if (
-            self.can_afford(UnitTypeId.HATCHERY)
-            and not self.already_pending(UnitTypeId.HATCHERY)
+            not self.already_pending(UnitTypeId.HATCHERY)
             and self.already_pending_upgrade(UpgradeId.ZERGLINGMOVEMENTSPEED)
             and (builder := next((u for u in self.workers.collecting), None))
             and (target := self.get_next_expansion())
         ):
-            return Build(builder, UnitTypeId.HATCHERY, target)
+            if self.can_afford(UnitTypeId.HATCHERY):
+                return Build(builder, UnitTypeId.HATCHERY, target)
+            else:
+                return DoNothing()
         return None
 
     def make_tech(self, strategy: StrategyDecision) -> Optional[Action]:
@@ -61,18 +63,20 @@ class Macro(Component):
 
     def train_queen(self) -> Optional[Action]:
         if (
-            self.can_afford(UnitTypeId.QUEEN)
-            and not self.already_pending(UnitTypeId.QUEEN)
+            not self.already_pending(UnitTypeId.QUEEN)
             and self.tech_requirement_progress(UnitTypeId.QUEEN) == 1
             and len(self.mediator.get_own_army_dict[UnitTypeId.QUEEN]) < self.townhalls.amount
             and (hatch := next((t for t in self.townhalls if t.is_idle), None))
         ):
-            return UseAbility(hatch, AbilityId.TRAINQUEEN_QUEEN)
+            if self.can_afford(UnitTypeId.QUEEN):
+                return UseAbility(hatch, AbilityId.TRAINQUEEN_QUEEN)
+            else:
+                return DoNothing()
         return None
 
     def get_upgrades(self) -> Optional[Action]:
         if (
-            self.can_afford(UpgradeId.ZERGLINGMOVEMENTSPEED)
+            80 < self.vespene
             and not self.already_pending_upgrade(UpgradeId.ZERGLINGMOVEMENTSPEED)
             and (
                 pool := next(
@@ -80,25 +84,29 @@ class Macro(Component):
                 )
             )
         ):
-            return UseAbility(pool, AbilityId.RESEARCH_ZERGLINGMETABOLICBOOST)
+            if self.can_afford(UpgradeId.ZERGLINGMOVEMENTSPEED):
+                return UseAbility(pool, AbilityId.RESEARCH_ZERGLINGMETABOLICBOOST)
+            else:
+                return DoNothing()
         return None
 
     def ensure_structure_exists(self, type_id: UnitTypeId) -> Optional[Action]:
         placement_near = self.start_location.towards(self.game_info.map_center, 8)
         trainer_type_id = min(UNIT_TRAINED_FROM[type_id], key=lambda v: v.value)
         if (
-            self.can_afford(type_id)
-            and not self.mediator.get_own_structures_dict[type_id]
+            not self.mediator.get_own_structures_dict[type_id]
             and not self.already_pending(type_id)
             and (trainer := next((t for t in self.mediator.get_own_army_dict[trainer_type_id]), None))
         ):
-            return Build(trainer, type_id, placement_near)
+            if self.can_afford(type_id):
+                return Build(trainer, type_id, placement_near)
+            else:
+                return DoNothing()
         return None
 
     def ensure_lair_exists(self) -> Optional[Action]:
         if (
-            self.can_afford(UnitTypeId.LAIR)
-            and not self.mediator.get_own_structures_dict[UnitTypeId.LAIR]
+            not self.mediator.get_own_structures_dict[UnitTypeId.LAIR]
             and not self.already_pending(UnitTypeId.LAIR)
             and (
                 hatch := next(
@@ -106,7 +114,10 @@ class Macro(Component):
                 )
             )
         ):
-            return UseAbility(hatch, AbilityId.UPGRADETOLAIR_LAIR)
+            if self.can_afford(UnitTypeId.LAIR):
+                return UseAbility(hatch, AbilityId.UPGRADETOLAIR_LAIR)
+            else:
+                return DoNothing()
         return None
 
     def train_army(self) -> Optional[Action]:
