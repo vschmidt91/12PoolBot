@@ -64,7 +64,7 @@ class Micro(Component):
                 # combat_prediction.confidence[tx, ty],
             ))
 
-            if local_confidence > -1/2:
+            if local_confidence > -1/3:
                 yield Attack(unit, target)
             else:
                 self._target_dict.pop(unit.tag, None)
