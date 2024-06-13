@@ -50,7 +50,6 @@ def shortest_paths_opt(
     cost: numpy.ndarray,
     sources: list[Point],
 ) -> DijkstraOutput:
-
     dist = numpy.full_like(cost, math.inf, dtype=float)
     prev = numpy.full_like(cost, None, dtype=object)
 

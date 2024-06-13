@@ -7,6 +7,7 @@ import numpy as np
 import scipy.signal
 from skimage.measure import block_reduce
 
+
 class MultigridMode(Enum):
     VCycle = auto()
     WCycle = auto()
@@ -45,9 +46,8 @@ def smooth_jacobi(
     b: np.ndarray,
     n: np.ndarray,
     h2: float,
-    omega: float = 4/5,
+    omega: float = 4 / 5,
 ) -> np.ndarray:
-
     s = convolve_jacobi(b * x)
     # s2 = s + (4 - n) * x
     # x2 = (s2 + h2 * rhs) / 4
@@ -61,20 +61,23 @@ def _get_checkerboard(shape):
     return np.indices(shape).sum(axis=0) % 2
 
 
-JACOBI_KERNEL = np.array([
-    [0, 1, 0],
-    [1, 0, 1],
-    [0, 1, 0],
-])
+JACOBI_KERNEL = np.array(
+    [
+        [0, 1, 0],
+        [1, 0, 1],
+        [0, 1, 0],
+    ]
+)
 
 
 def convolve(A: np.ndarray, k: np.ndarray) -> np.ndarray:
     return scipy.ndimage.convolve(A, k)
 
+
 def convolve_jacobi(A: np.ndarray) -> np.ndarray:
     Ap = np.pad(A, ((1, 1), (1, 1)))
     cp = np.roll(Ap, -1, 0) + np.roll(Ap, +1, 0) + np.roll(Ap, -1, 1) + np.roll(Ap, +1, 1)
-    c = cp[1:-1,1:-1]
+    c = cp[1:-1, 1:-1]
     return c
 
 
@@ -102,7 +105,6 @@ def mg_opt(
     h: float = 1.0,
     options: MultigridOptions | None = None,
 ) -> np.ndarray:
-
     options = options or MultigridOptions()
 
     if any(d < 8 for d in x.shape[:2]):
@@ -115,7 +117,7 @@ def mg_opt(
 
     # pre-smooth
     for _ in range(options.presmooth):
-        x = smooth(x, rhs, b, n, h*h)
+        x = smooth(x, rhs, b, n, h * h)
 
     for sub_mode in SUB_CYCLES[mode]:
         r = residual(x, rhs, b, n, h)
@@ -123,9 +125,10 @@ def mg_opt(
         x += e
 
         for _ in range(options.postsmooth):
-            x = smooth(x, rhs, b, n, h*h)
+            x = smooth(x, rhs, b, n, h * h)
 
     return x
+
 
 def residual(
     x: np.ndarray,
@@ -134,7 +137,6 @@ def residual(
     n: typing.Optional[np.ndarray] = None,
     h: float = 1.0,
 ) -> np.ndarray:
-
     if n is None:
         n = convolve_jacobi(b)
 
@@ -143,6 +145,7 @@ def residual(
     r = rhs - L / (h * h)
     return r
 
+
 def _coarse_grid_correction(
     r: np.ndarray,
     b: np.ndarray,
@@ -150,7 +153,6 @@ def _coarse_grid_correction(
     h: float,
     options: MultigridOptions,
 ) -> np.ndarray:
-
     # RESTRICT
     block_sizes = (options.reduction, options.reduction)
 
@@ -167,7 +169,7 @@ def _coarse_grid_correction(
 
     # PROLONGATE
     e = prolongate(ec, block_sizes)
-    e = e[:r.shape[0], :r.shape[1]]
+    e = e[: r.shape[0], : r.shape[1]]
     return e
 
 
@@ -175,5 +177,4 @@ def divergence(
     x: np.ndarray,
     b: np.ndarray,
 ) -> np.ndarray:
-
     return convolve_jacobi(b * x) - convolve_jacobi(b) * x

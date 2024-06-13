@@ -33,5 +33,7 @@ skip_glob = ["ares-sc2/*"]
 module = [
     "ares.*",
     "sc2.*",
+    "scipy.*",
+    "sklearn.*",
 ]
 ignore_missing_imports = true
