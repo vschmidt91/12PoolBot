@@ -73,6 +73,8 @@ class Micro(Component):
                     retreat_to = retreat_target(unit.position, combat_prediction.combat_outcome, pathing)
                 if retreat_to is not None:
                     yield Move(unit, retreat_to)
+                else:
+                    yield Attack(unit, target)
 
     def micro_queens(self) -> Iterable[Action]:
         queens = (q for q in self.mediator.get_own_army_dict[UnitTypeId.QUEEN] if q.energy >= 25 and q.is_idle)
