@@ -45,7 +45,7 @@ def _combat_presence(context: CombatPredictionContext) -> CombatPresence:
     for unit in context.combatants:
         d = context.disk(unit.position, unit.radius + unit.sight_range)
         m = enemy_force if unit.is_enemy else force
-        m[d] += unit.ground_dps * (unit.health + unit.shield)
+        m[d] += unit.ground_dps * ((unit.health + unit.shield) ** 1.5)
     return CombatPresence(force, enemy_force)
 
 

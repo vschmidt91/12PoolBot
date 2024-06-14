@@ -66,7 +66,7 @@ class Micro(Component):
                 )
             )
 
-            if local_confidence > -1/2:
+            if local_confidence > -1 / 2:
                 yield Attack(unit, target)
             else:
                 if paths is None:

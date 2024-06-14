@@ -1,24 +1,28 @@
+import math
 from typing import Iterable, Optional
 
+from ares.consts import ALL_STRUCTURES
+
 from sc2.dicts.unit_trained_from import UNIT_TRAINED_FROM
+from sc2.dicts.upgrade_researched_from import UPGRADE_RESEARCHED_FROM
 from sc2.dicts.unit_train_build_abilities import TRAIN_INFO
-from sc2.ids.ability_id import AbilityId
+from sc2.dicts.unit_research_abilities import RESEARCH_INFO
 from sc2.ids.buff_id import BuffId
 from sc2.ids.unit_typeid import UnitTypeId
 from sc2.ids.upgrade_id import UpgradeId
+from sc2.unit import Unit
 from sc2.position import Point2
 
 from ..action import Action, Build, DoNothing, UseAbility
 from .component import Component
-from .strategy import StrategyDecision
 
 
 class Macro(Component):
-    def macro(self, strategy: StrategyDecision) -> Iterable[Action]:
+    def macro(self, build_spire: bool) -> Iterable[Action]:
         return [
             (
                 self.wait_for_build_order_completion()
-                or self.make_tech(strategy)
+                or self.make_tech(build_spire)
                 or self.train_queen()
                 or self.get_upgrades()
                 or self.train_army()
@@ -31,23 +35,17 @@ class Macro(Component):
     def wait_for_build_order_completion(self) -> Optional[Action]:
         if not self.build_order_runner.build_completed:
             return DoNothing()
-        return None
+        else:
+            return None
 
     def expand(self) -> Optional[Action]:
-        if (
-            not self.already_pending(UnitTypeId.HATCHERY)
-            and self.already_pending_upgrade(UpgradeId.ZERGLINGMOVEMENTSPEED)
-            and (builder := next((u for u in self.workers.collecting), None))
-            and (target := self.get_next_expansion())
-        ):
-            if self.can_afford(UnitTypeId.HATCHERY):
-                return Build(builder, UnitTypeId.HATCHERY, target)
-            else:
-                return DoNothing()
-        return None
+        if self.already_pending_upgrade(UpgradeId.ZERGLINGMOVEMENTSPEED) and (target := self.get_next_expansion()):
+            return self.make_unit(UnitTypeId.HATCHERY, target=target, max_pending=1)
+        else:
+            return None
 
-    def make_tech(self, strategy: StrategyDecision) -> Optional[Action]:
-        if strategy.mutalisk_switch:
+    def make_tech(self, build_spire: bool) -> Optional[Action]:
+        if build_spire:
             return (
                 self.ensure_structure_exists(UnitTypeId.SPAWNINGPOOL)
                 or self.ensure_lair_exists()
@@ -57,68 +55,35 @@ class Macro(Component):
             return self.ensure_structure_exists(UnitTypeId.SPAWNINGPOOL)
 
     def morph_overlord(self) -> Optional[Action]:
-        if self.supply_left < 1 and not self.already_pending(UnitTypeId.OVERLORD):
-            return self.train_unit(UnitTypeId.OVERLORD)
-        return None
+        if self.supply_left < 1:
+            return self.make_unit(UnitTypeId.OVERLORD, max_pending=1)
+        else:
+            return None
 
     def train_queen(self) -> Optional[Action]:
-        if (
-            not self.already_pending(UnitTypeId.QUEEN)
-            and self.tech_requirement_progress(UnitTypeId.QUEEN) == 1
-            and len(self.mediator.get_own_army_dict[UnitTypeId.QUEEN]) < self.townhalls.amount
-            and (hatch := next((t for t in self.townhalls if t.is_idle), None))
-        ):
-            if self.can_afford(UnitTypeId.QUEEN):
-                return UseAbility(hatch, AbilityId.TRAINQUEEN_QUEEN)
-            else:
-                return DoNothing()
-        return None
+        if len(self.mediator.get_own_army_dict[UnitTypeId.QUEEN]) < self.townhalls.amount:
+            return self.make_unit(UnitTypeId.QUEEN, idle_trainers=True, max_pending=1)
+        else:
+            return None
 
     def get_upgrades(self) -> Optional[Action]:
-        if (
-            80 < self.vespene
-            and not self.already_pending_upgrade(UpgradeId.ZERGLINGMOVEMENTSPEED)
-            and (
-                pool := next(
-                    (p for p in self.mediator.get_own_structures_dict[UnitTypeId.SPAWNINGPOOL] if p.is_idle), None
-                )
-            )
-        ):
-            if self.can_afford(UpgradeId.ZERGLINGMOVEMENTSPEED):
-                return UseAbility(pool, AbilityId.RESEARCH_ZERGLINGMETABOLICBOOST)
-            else:
-                return DoNothing()
-        return None
+        if 80 < self.vespene:
+            return self.make_upgrade(UpgradeId.ZERGLINGMOVEMENTSPEED)
+        else:
+            return None
 
     def ensure_structure_exists(self, type_id: UnitTypeId) -> Optional[Action]:
         placement_near = self.start_location.towards(self.game_info.map_center, 8)
-        trainer_type_id = min(UNIT_TRAINED_FROM[type_id], key=lambda v: v.value)
-        if (
-            not self.mediator.get_own_structures_dict[type_id]
-            and not self.already_pending(type_id)
-            and (trainer := next((t for t in self.mediator.get_own_army_dict[trainer_type_id]), None))
-        ):
-            if self.can_afford(type_id):
-                return Build(trainer, type_id, placement_near)
-            else:
-                return DoNothing()
-        return None
+        if not self.mediator.get_own_structures_dict[type_id]:
+            return self.make_unit(type_id, target=placement_near, max_pending=1)
+        else:
+            return None
 
     def ensure_lair_exists(self) -> Optional[Action]:
-        if (
-            not self.mediator.get_own_structures_dict[UnitTypeId.LAIR]
-            and not self.already_pending(UnitTypeId.LAIR)
-            and (
-                hatch := next(
-                    (t for t in self.mediator.get_own_structures_dict[UnitTypeId.HATCHERY] if t.is_idle), None
-                )
-            )
-        ):
-            if self.can_afford(UnitTypeId.LAIR):
-                return UseAbility(hatch, AbilityId.UPGRADETOLAIR_LAIR)
-            else:
-                return DoNothing()
-        return None
+        if not self.mediator.get_own_structures_dict[UnitTypeId.LAIR]:
+            return self.make_unit(UnitTypeId.LAIR, idle_trainers=True, max_pending=1)
+        else:
+            return None
 
     def train_army(self) -> Optional[Action]:
         larva_per_second = sum(
@@ -139,21 +104,65 @@ class Macro(Component):
             and not self.already_pending(UnitTypeId.DRONE)
         )
         if should_drone:
-            return self.train_unit(UnitTypeId.DRONE)
+            return self.make_unit(UnitTypeId.DRONE)
         else:
-            return self.train_unit(UnitTypeId.MUTALISK) or self.train_unit(UnitTypeId.ZERGLING)
-
-    def train_unit(self, type_id: UnitTypeId) -> Optional[Action]:
-        trainer_type_id = min(UNIT_TRAINED_FROM[type_id], key=lambda v: v.value)
-        if (
-            self.can_afford(type_id)
-            and self.tech_requirement_progress(type_id) == 1
-            and (trainer := next((t for t in self.mediator.get_own_army_dict[trainer_type_id]), None))
-        ):
-            ability = TRAIN_INFO[trainer_type_id][type_id]["ability"]
-            return UseAbility(trainer, ability)
-        return None
+            return self.make_unit(UnitTypeId.MUTALISK) or self.make_unit(UnitTypeId.ZERGLING)
 
     def get_next_expansion(self) -> Optional[Point2]:
         taken = {th.position for th in self.townhalls}
         return next((p for p, d in self.mediator.get_own_expansions if p not in taken), None)
+
+    def make_unit(
+        self,
+        type_id: UnitTypeId,
+        target: Point2 | None = None,
+        idle_trainers: bool = False,
+        max_pending: float = math.inf,
+    ) -> Optional[Action]:
+        if max_pending is not None and max_pending <= self.already_pending(type_id):
+            return None
+
+        def filter_trainer(t: Unit) -> bool:
+            if idle_trainers and not t.is_idle:
+                return False
+            return True
+
+        trainer_type_id = min(UNIT_TRAINED_FROM[type_id], key=lambda v: v.value)
+        trainer_dict = (
+            self.mediator.get_own_structures_dict
+            if trainer_type_id in ALL_STRUCTURES
+            else self.mediator.get_own_army_dict
+        )
+        trainers = (t for t in trainer_dict[trainer_type_id] if filter_trainer(t))
+        if (
+            self.can_afford(type_id)
+            and self.tech_requirement_progress(type_id) == 1
+            and (trainer := next(trainers, None))
+        ):
+            if target is not None:
+                return Build(trainer, type_id, target)
+            else:
+                ability = TRAIN_INFO[trainer_type_id][type_id]["ability"]
+                return UseAbility(trainer, ability)
+        else:
+            return None
+
+    def make_upgrade(
+        self,
+        upgrade_id: UpgradeId,
+    ) -> Optional[Action]:
+        if self.already_pending_upgrade(upgrade_id):
+            return None
+
+        trainer_type_id = UPGRADE_RESEARCHED_FROM[upgrade_id]
+        trainer_dict = (
+            self.mediator.get_own_structures_dict
+            if trainer_type_id in ALL_STRUCTURES
+            else self.mediator.get_own_army_dict
+        )
+        trainers = (t for t in trainer_dict[trainer_type_id] if t.is_idle)
+        if self.can_afford(upgrade_id) and (trainer := next(trainers, None)):
+            ability = RESEARCH_INFO[trainer_type_id][upgrade_id]["ability"]
+            return UseAbility(trainer, ability)
+        else:
+            return None

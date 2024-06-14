@@ -22,7 +22,7 @@ class TwelvePoolBot(Strategy, Micro, Macro, AresBot):
         strategy = self.decide_strategy()
         combat_prediction = predict(self.prediction_context)
         actions = chain(
-            self.macro(strategy),
+            self.macro(build_spire=strategy.mutalisk_switch),
             self.micro(combat_prediction),
         )
         for action in actions:
