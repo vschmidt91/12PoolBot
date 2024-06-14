@@ -65,7 +65,7 @@ class Micro(Component):
             x, y = unit.position.rounded
             local_confidence = combat_prediction.confidence[x, y]
 
-            threshold = -1/2 if unit.weapon_ready else +1/2
+            threshold = -0.5 if unit.weapon_ready else 0.0
             # threshold = (1 - 2 * np.exp(-unit.weapon_cooldown)) / 3
             if local_confidence > threshold:
                 yield Attack(unit, target)
