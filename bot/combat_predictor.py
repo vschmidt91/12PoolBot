@@ -25,7 +25,7 @@ class CombatPresence:
 
 @dataclass
 class CombatPrediction:
-    civilian_presence: np.ndarray
+    # civilian_presence: np.ndarray
     combat_outcome: np.ndarray
     confidence: np.ndarray
 
@@ -51,11 +51,11 @@ def _combat_presence(context: CombatPredictionContext) -> CombatPresence:
 
 def predict(context: CombatPredictionContext) -> CombatPrediction:
     combat_presence = _combat_presence(context)
-    civilian_presence = _civilian_presence(context)
+    # civilian_presence = _civilian_presence(context)
     combat_outcome = combat_presence.force - combat_presence.enemy_force
     confidence = combat_outcome / (combat_presence.force + combat_presence.enemy_force)
     return CombatPrediction(
-        civilian_presence=civilian_presence,
+        # civilian_presence=civilian_presence,
         combat_outcome=combat_outcome,
         confidence=confidence,
     )

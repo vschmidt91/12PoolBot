@@ -8,6 +8,8 @@ from .components.macro import Macro
 from .combat_predictor import predict, CombatPredictionContext
 from .utils.debug import save_map
 
+from loguru import logger
+
 
 class TwelvePoolBot(Strategy, Micro, Macro, AresBot):
     async def on_start(self) -> None:
@@ -28,7 +30,10 @@ class TwelvePoolBot(Strategy, Micro, Macro, AresBot):
         for action in actions:
             success = await action.execute(self)
             if not success:
-                raise Exception(f"Action failed: {action}")
+                if self.config[DEBUG]:
+                    raise Exception(f"Action failed: {action}")
+                else:
+                    logger.warning(f"Action failed: {action}")
 
     @property
     def prediction_context(self) -> CombatPredictionContext:

@@ -31,7 +31,7 @@ def retreat_target(p: Point2, potential: np.ndarray, pathing: np.ndarray) -> Poi
 
 
 class Micro(Component):
-    _target_dict: [int, Point2] = dict()
+    _target_dict: dict[int, Point2] = dict()
 
     def micro(self, combat_prediction: CombatPrediction) -> Iterable[Action]:
         return chain(
@@ -71,9 +71,10 @@ class Micro(Component):
             else:
                 if paths is None:
                     sources = [Point(w.position.rounded) for w in self.workers]
-                    if any(sources):
-                        cost = np.where(pathing == 0, np.inf, np.exp(-combat_prediction.confidence))
-                        paths = shortest_paths_opt(cost, sources)
+                    if not sources:
+                        continue
+                    cost = np.where(pathing == 0, np.inf, np.exp(-combat_prediction.confidence))
+                    paths = shortest_paths_opt(cost, sources, diagonal=True)
 
                 if retreat_path := paths.get_path((x, y), limit=3):
                     yield Move(unit, Point2(retreat_path[-1]))
