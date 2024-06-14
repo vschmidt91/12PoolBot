@@ -13,6 +13,8 @@ from .component import Component
 from ..utils.numerics import normalize, gradient2d
 from ..utils.dijkstra import shortest_paths_opt, Point, DijkstraOutput
 
+_OFFSET = Point2((0.5, 0.5))
+
 
 def retreat_target(p: Point2, potential: np.ndarray, pathing: np.ndarray) -> Point2 | None:
     x, y = p.rounded
@@ -63,16 +65,19 @@ class Micro(Component):
             x, y = unit.position.rounded
             local_confidence = combat_prediction.confidence[x, y]
 
-            if local_confidence > -1 / 3:
+            threshold = -1/2 if unit.weapon_ready else +1/2
+            # threshold = (1 - 2 * np.exp(-unit.weapon_cooldown)) / 3
+            if local_confidence > threshold:
                 yield Attack(unit, target)
             else:
                 if paths is None:
                     sources = [_point2_to_point(w.position) for w in self.workers]
-                    cost = np.where(pathing == 0, np.inf, np.exp(-combat_prediction.confidence))
+                    cost = np.where(pathing == 0, np.inf, np.exp(-0.5 * combat_prediction.confidence))
                     paths = shortest_paths_opt(cost, sources, diagonal=True)
 
-                if retreat_path := paths.get_path((x, y), limit=3):
-                    yield Move(unit, Point2(retreat_path[-1]))
+                if retreat_path := paths.get_path((x, y), limit=5):
+                    target = Point2(retreat_path[-1]).offset(_OFFSET)
+                    yield Move(unit, target)
 
     def micro_queens(self) -> Iterable[Action]:
         queens = (q for q in self.mediator.get_own_army_dict[UnitTypeId.QUEEN] if q.energy >= 25 and q.is_idle)
