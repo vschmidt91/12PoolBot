@@ -61,13 +61,13 @@ def shortest_paths_opt(
     dist = np.full_like(cost, math.inf, dtype=float)
     prev: dict[Point, Point] = {}
 
-    Q = []
+    Q: list[HeapElement] = []
     for s in sources:
         dist[s] = 0.0
         Q.append(HeapElement(s, 0.0))
 
     while Q:
-        elem: HeapElement = heapq.heappop(Q)
+        elem = heapq.heappop(Q)
         u = elem.position
         du = float(dist[u])
         if elem.distance == du:

@@ -30,6 +30,11 @@ def retreat_target(p: Point2, potential: np.ndarray, pathing: np.ndarray) -> Poi
     return None
 
 
+def _point2_to_point(p: Point2) -> Point:
+    x, y = p.rounded
+    return int(x), int(y)
+
+
 class Micro(Component):
     _target_dict: dict[int, Point2] = dict()
 
@@ -56,38 +61,18 @@ class Micro(Component):
             target = self._target_dict.setdefault(unit.tag, attack_target)
 
             x, y = unit.position.rounded
-            tx, ty = target.rounded
-            mx, my = (0.5 * (unit.position + target)).rounded
-            local_confidence = np.mean(
-                (
-                    combat_prediction.confidence[x, y],
-                    # combat_prediction.confidence[mx, my],
-                    # combat_prediction.confidence[tx, ty],
-                )
-            )
+            local_confidence = combat_prediction.confidence[x, y]
 
-            if local_confidence > -1 / 2:
+            if local_confidence > -1 / 3:
                 yield Attack(unit, target)
             else:
                 if paths is None:
-                    sources = [Point(w.position.rounded) for w in self.workers]
-                    if not sources:
-                        continue
+                    sources = [_point2_to_point(w.position) for w in self.workers]
                     cost = np.where(pathing == 0, np.inf, np.exp(-combat_prediction.confidence))
                     paths = shortest_paths_opt(cost, sources, diagonal=True)
 
                 if retreat_path := paths.get_path((x, y), limit=3):
                     yield Move(unit, Point2(retreat_path[-1]))
-
-                #
-                # self._target_dict.pop(unit.tag, None)
-                # retreat_to = retreat_target(unit.position, combat_prediction.confidence, pathing)
-                # if retreat_to is None:
-                #     retreat_to = retreat_target(unit.position, combat_prediction.civilian_presence, pathing)
-                # if retreat_to is not None:
-                #     yield Move(unit, retreat_to)
-                # else:
-                #     yield Attack(unit, target)
 
     def micro_queens(self) -> Iterable[Action]:
         queens = (q for q in self.mediator.get_own_army_dict[UnitTypeId.QUEEN] if q.energy >= 25 and q.is_idle)

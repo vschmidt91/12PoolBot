@@ -113,7 +113,17 @@ def mg_opt(
     if n is None:
         n = convolve_jacobi(b)
 
-    smooth = smooth_gsrb if options.gsrb else smooth_jacobi
+    def smooth(
+        x: np.ndarray,
+        rhs: np.ndarray,
+        b: np.ndarray,
+        n: np.ndarray,
+        h2: float,
+    ) -> np.ndarray:
+        if options.gsrb:
+            return smooth_gsrb(x, rhs, b, n, h2)
+        else:
+            return smooth_jacobi(x, rhs, b, n, h2)
 
     # pre-smooth
     for _ in range(options.presmooth):
