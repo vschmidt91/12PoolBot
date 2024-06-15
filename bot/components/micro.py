@@ -50,17 +50,19 @@ class Micro(Component):
             local_confidence = combat_prediction.confidence[x, y]
 
             threshold = -0.5
+            reduction = 2
+            path_limit = 3
+
             if local_confidence > threshold:
                 yield Attack(unit, target)
             else:
-                reduction = 2
                 if paths is None:
                     sources = [_point2_to_point(w.position / reduction) for w in self.workers]
                     cost = np.where(pathing == 0, np.inf, np.exp(-3 * combat_prediction.confidence))
                     cost_reduced = block_reduce(cost, reduction, np.max)
                     paths = shortest_paths_opt(cost_reduced, sources, diagonal=True)
 
-                retreat_path = paths.get_path(_point2_to_point(unit.position / reduction), limit=2)
+                retreat_path = paths.get_path(_point2_to_point(unit.position / reduction), limit=path_limit)
                 if len(retreat_path) < 2:
                     yield Move(unit, self.start_location)
                 else:
