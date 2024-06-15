@@ -2,6 +2,7 @@ from itertools import chain
 from typing import Iterable
 
 import numpy as np
+from skimage.measure import block_reduce
 from sc2.ids.ability_id import AbilityId
 from sc2.ids.buff_id import BuffId
 from sc2.ids.unit_typeid import UnitTypeId
@@ -10,26 +11,9 @@ from sc2.position import Point2
 from ..action import Action, Attack, Move, UseAbility
 from ..combat_predictor import CombatPrediction
 from .component import Component
-from ..utils.numerics import normalize, gradient2d
 from ..utils.dijkstra import shortest_paths_opt, Point, DijkstraOutput
 
 _OFFSET = Point2((0.5, 0.5))
-
-
-def retreat_target(p: Point2, potential: np.ndarray, pathing: np.ndarray) -> Point2 | None:
-    x, y = p.rounded
-    gradient = normalize(gradient2d(potential, x, y))
-    retreat_to = Point2(p + 2 * gradient)
-    if pathing[x, y]:
-        return retreat_to
-    for i in range(10):
-        sigma = np.sqrt(1 + i)
-        p = np.random.normal(loc=p, scale=sigma)
-        p = np.clip(p, (0, 0), pathing.shape)
-        px, py = p.astype(int)
-        if pathing[x, y] and potential[px, py] > potential[x, y]:
-            return retreat_to
-    return None
 
 
 def _point2_to_point(p: Point2) -> Point:
@@ -65,18 +49,22 @@ class Micro(Component):
             x, y = unit.position.rounded
             local_confidence = combat_prediction.confidence[x, y]
 
-            threshold = -0.5 if unit.weapon_ready else 0.0
-            # threshold = (1 - 2 * np.exp(-unit.weapon_cooldown)) / 3
+            threshold = -0.5
             if local_confidence > threshold:
                 yield Attack(unit, target)
             else:
+                reduction = 2
                 if paths is None:
-                    sources = [_point2_to_point(w.position) for w in self.workers]
-                    cost = np.where(pathing == 0, np.inf, np.exp(-0.5 * combat_prediction.confidence))
-                    paths = shortest_paths_opt(cost, sources, diagonal=True)
+                    sources = [_point2_to_point(w.position / reduction) for w in self.workers]
+                    cost = np.where(pathing == 0, np.inf, np.exp(-3 * combat_prediction.confidence))
+                    cost_reduced = block_reduce(cost, reduction, np.max)
+                    paths = shortest_paths_opt(cost_reduced, sources, diagonal=True)
 
-                if retreat_path := paths.get_path((x, y), limit=5):
-                    target = Point2(retreat_path[-1]).offset(_OFFSET)
+                retreat_path = paths.get_path(_point2_to_point(unit.position / reduction), limit=2)
+                if len(retreat_path) < 2:
+                    yield Move(unit, self.start_location)
+                else:
+                    target = Point2(retreat_path[-1]).offset(_OFFSET) * reduction
                     yield Move(unit, target)
 
     def micro_queens(self) -> Iterable[Action]:

@@ -25,6 +25,10 @@ CONFIG_FILE: str = "config.yml"
 MAP_FILE_EXT: str = "SC2Map"
 MY_BOT_NAME: str = "MyBotName"
 MY_BOT_RACE: str = "MyBotRace"
+MAP_VETOS: list[str] = [
+    "PlateauMicro_2",
+    "BotMicroArena_6",
+]
 
 
 def main():
@@ -65,8 +69,11 @@ def main():
         #     "WaterfallAIE",
         #     "HardwireAIE",
         # ]
+        for m in MAP_VETOS:
+            map_list.remove(m)
 
         random_race = random.choice([Race.Zerg, Race.Terran, Race.Protoss])
+        random_race = Race.Protoss
         print("Starting local game...")
         run_game(
             maps.get(random.choice(map_list)),

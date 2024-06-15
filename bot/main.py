@@ -4,7 +4,7 @@ from itertools import chain
 
 from .components.strategy import Strategy
 from .components.micro import Micro
-from .components.macro import Macro
+from .components.macro.macro import Macro
 from .combat_predictor import predict, CombatPredictionContext
 from .utils.debug import save_map
 
@@ -24,7 +24,7 @@ class TwelvePoolBot(Strategy, Micro, Macro, AresBot):
         strategy = self.decide_strategy()
         combat_prediction = predict(self.prediction_context)
         actions = chain(
-            self.macro(build_spire=strategy.mutalisk_switch),
+            self.macro(strategy),
             self.micro(combat_prediction),
         )
         for action in actions:

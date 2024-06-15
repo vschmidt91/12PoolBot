@@ -1,8 +1,9 @@
 from ares import AresBot
 from ares.consts import UnitRole
 
+from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Optional, Protocol
+from typing import Optional
 
 from loguru import logger
 from sc2.ids.ability_id import AbilityId
@@ -11,7 +12,8 @@ from sc2.position import Point2
 from sc2.unit import Unit
 
 
-class Action(Protocol):
+class Action(ABC):
+    @abstractmethod
     async def execute(self, bot: AresBot) -> bool:
         ...
 
