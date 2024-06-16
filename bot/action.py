@@ -23,7 +23,7 @@ class DoNothing(Action):
 
 
 @dataclass
-class Attack(Action):
+class AttackMove(Action):
     unit: Unit
     target: Point2
 
@@ -38,6 +38,14 @@ class Move(Action):
 
     async def execute(self, bot: AresBot) -> bool:
         return self.unit.move(self.target)
+
+
+@dataclass
+class HoldPosition(Action):
+    unit: Unit
+
+    async def execute(self, bot: AresBot) -> bool:
+        return self.unit.hold_position()
 
 
 @dataclass

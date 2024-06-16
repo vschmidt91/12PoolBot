@@ -2,6 +2,7 @@ from itertools import chain
 
 from ares import DEBUG, AresBot
 from loguru import logger
+from sc2.constants import WORKER_TYPES
 
 from .combat_predictor import CombatPredictionContext, predict
 from .components.macro.macro import Macro
@@ -36,8 +37,9 @@ class TwelvePoolBot(Strategy, Micro, Macro, AresBot):
 
     @property
     def prediction_context(self) -> CombatPredictionContext:
+        combatants = [u for u in chain(self.all_own_units, self.all_enemy_units) if u.type_id not in WORKER_TYPES]
         return CombatPredictionContext(
             pathing=self.game_info.pathing_grid.data_numpy.T,
             civilians=chain(self.structures, self.enemy_structures),
-            combatants=chain(self.all_own_units, self.all_enemy_units),
+            combatants=combatants,
         )
