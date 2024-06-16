@@ -1,19 +1,18 @@
 from typing import Iterable
 
 from ares.consts import ALL_STRUCTURES
-
 from sc2.dicts.unit_trained_from import UNIT_TRAINED_FROM
 from sc2.dicts.upgrade_researched_from import UPGRADE_RESEARCHED_FROM
 from sc2.ids.unit_typeid import UnitTypeId
 from sc2.ids.upgrade_id import UpgradeId
+from sc2.position import Point2
 from sc2.unit import Unit
 from sc2.units import Units
-from sc2.position import Point2
 
-from ..component import Component
-from .macro_action import BuildUnit, MacroAction, WaitForResources, ResearchUpgrade
 from ...action import Action
+from ..component import Component
 from ..strategy import StrategyDecision
+from .macro_action import BuildUnit, MacroAction, ResearchUpgrade, WaitForResources
 
 
 class Macro(Component):

@@ -1,10 +1,10 @@
-from typing import Iterable
 from dataclasses import dataclass
+from typing import Iterable
 
 import numpy as np
 import skimage.draw
-from sc2.unit import Unit
 from sc2.position import Point2
+from sc2.unit import Unit
 
 
 @dataclass

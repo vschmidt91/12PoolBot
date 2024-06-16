@@ -2,16 +2,16 @@ from itertools import chain
 from typing import Iterable
 
 import numpy as np
-from skimage.measure import block_reduce
 from sc2.ids.ability_id import AbilityId
 from sc2.ids.buff_id import BuffId
 from sc2.ids.unit_typeid import UnitTypeId
 from sc2.position import Point2
+from skimage.measure import block_reduce
 
 from ..action import Action, Attack, Move, UseAbility
 from ..combat_predictor import CombatPrediction
+from ..utils.dijkstra import DijkstraOutput, Point, shortest_paths_opt
 from .component import Component
-from ..utils.dijkstra import shortest_paths_opt, Point, DijkstraOutput
 
 _OFFSET = Point2((0.5, 0.5))
 

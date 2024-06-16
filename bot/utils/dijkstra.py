@@ -1,7 +1,7 @@
-from dataclasses import dataclass
-from functools import total_ordering
 import heapq
 import math
+from dataclasses import dataclass
+from functools import total_ordering
 
 import numpy as np
 

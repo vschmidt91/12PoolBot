@@ -1,7 +1,7 @@
-from enum import Enum, auto
-from dataclasses import dataclass
-from functools import cache
 import typing
+from dataclasses import dataclass
+from enum import Enum, auto
+from functools import cache
 
 import numpy as np
 import scipy.signal

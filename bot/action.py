@@ -1,10 +1,9 @@
-from ares import AresBot
-from ares.consts import UnitRole
-
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Optional
 
+from ares import AresBot
+from ares.consts import UnitRole
 from loguru import logger
 from sc2.ids.ability_id import AbilityId
 from sc2.ids.unit_typeid import UnitTypeId

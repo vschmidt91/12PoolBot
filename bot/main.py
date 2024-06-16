@@ -1,14 +1,13 @@
-from ares import AresBot, DEBUG
-
 from itertools import chain
 
-from .components.strategy import Strategy
-from .components.micro import Micro
-from .components.macro.macro import Macro
-from .combat_predictor import predict, CombatPredictionContext
-from .utils.debug import save_map
-
+from ares import DEBUG, AresBot
 from loguru import logger
+
+from .combat_predictor import CombatPredictionContext, predict
+from .components.macro.macro import Macro
+from .components.micro import Micro
+from .components.strategy import Strategy
+from .utils.debug import save_map
 
 
 class TwelvePoolBot(Strategy, Micro, Macro, AresBot):

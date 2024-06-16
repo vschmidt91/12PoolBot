@@ -13,6 +13,8 @@ black = "^23.1.0"
 isort = "^5.12.0"
 requests = "^2.32.3"
 scikit-image = "^0.23.2"
+sc2-helper = "^0.2.1"
+jupyter = "^1.0.0"
 
 [build-system]
 requires = ["poetry-core"]

@@ -1,12 +1,12 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 
-from sc2.dicts.unit_train_build_abilities import TRAIN_INFO
 from sc2.dicts.unit_research_abilities import RESEARCH_INFO
+from sc2.dicts.unit_train_build_abilities import TRAIN_INFO
 from sc2.ids.unit_typeid import UnitTypeId
 from sc2.ids.upgrade_id import UpgradeId
-from sc2.unit import Unit
 from sc2.position import Point2
+from sc2.unit import Unit
 
 from ...action import Action, Build, DoNothing, UseAbility
 
