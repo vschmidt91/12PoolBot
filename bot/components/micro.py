@@ -55,22 +55,22 @@ class Micro(Component):
             else:
                 combat_action = CombatAction.Hold
 
-            action: Action
+            action: Action | None = None
             if combat_action == CombatAction.Attack:
-                if attack_pathing.dist[p] == np.inf:
-                    action = AttackMove(unit, self.random_scout_target())
-                else:
+                if attack_pathing.dist[p] < np.inf:
                     action = AttackMove(unit, Point2(attack_path[-1]))
+                elif unit.is_idle:
+                    action = AttackMove(unit, self.random_scout_target())
             elif combat_action == CombatAction.Retreat:
                 if retreat_pathing.dist[p] == np.inf:
                     action = Move(unit, self.start_location)
                 else:
-                    action = Move(unit, Point2(retreat_pathing.get_path(p, limit=2)[-1]))
+                    action = Move(unit, Point2(retreat_pathing.get_path(p, limit=3)[-1]))
             else:
                 action = HoldPosition(unit)
 
             previous_action = self._action_cache.get(unit.tag, None)
-            if action != previous_action:
+            if action and action != previous_action:
                 self._action_cache[unit.tag] = action
                 yield action
 
