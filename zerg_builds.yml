@@ -50,7 +50,7 @@ Builds:
         ConstantWorkerProductionTill: 0
         OpeningBuildOrder:
             - 12 overlord_scout:
-                  [enemy_nat_vision, enemy_nat_hg_spot]
+                  [enemy_nat_hg_spot]
             - 12 spawningpool
             - 11 drone
             - 12 drone

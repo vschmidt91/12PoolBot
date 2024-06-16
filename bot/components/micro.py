@@ -35,25 +35,29 @@ class Micro(Component):
         )
 
     def micro_army(self, combat_prediction: CombatPrediction) -> Iterable[Action]:
-        attack_targets = [_point2_to_point(s.position) for s in self.enemy_units.not_flying]
+        attack_targets = [_point2_to_point(s.position) for s in self.all_enemy_units.not_flying]
         retreat_targets = [_point2_to_point(w.position) for w in self.workers]
 
         pathing = self.game_info.pathing_grid.data_numpy.T
-        pathing_cost = np.where(pathing == 0, np.inf, np.maximum(1, np.exp(-3 * combat_prediction.confidence)))
+        pathing_cost = np.where(pathing == 0, np.inf, 1 + np.exp(-combat_prediction.combat_outcome))
+        # pathing_cost = np.where(pathing == 0, np.inf, 1.0)
         retreat_pathing = shortest_paths_opt(pathing_cost, retreat_targets, diagonal=True)
         attack_pathing = shortest_paths_opt(pathing_cost, attack_targets, diagonal=True)
 
         for unit in self.units({UnitTypeId.ZERGLING, UnitTypeId.MUTALISK}):
             p = _point2_to_point(unit.position.rounded)
-            attack_path = attack_pathing.get_path(p, limit=5)
+
+            attack_path_limit = 3
+            retreat_path_limit = 3
+            attack_path = attack_pathing.get_path(p, limit=attack_path_limit)
 
             combat_action: CombatAction
-            if -0.5 < combat_prediction.confidence[attack_path[-1]] or retreat_pathing.dist[p] < unit.sight_range:
+            if -0.5 <= combat_prediction.confidence[attack_path[-1]]:
                 combat_action = CombatAction.Attack
-            elif 0 < combat_prediction.presence.enemy_force[p]:
-                combat_action = CombatAction.Retreat
-            else:
+            elif 0 == combat_prediction.presence.enemy_force[p]:
                 combat_action = CombatAction.Hold
+            else:
+                combat_action = CombatAction.Retreat
 
             action: Action | None = None
             if combat_action == CombatAction.Attack:
@@ -62,15 +66,18 @@ class Micro(Component):
                 elif unit.is_idle:
                     action = AttackMove(unit, self.random_scout_target())
             elif combat_action == CombatAction.Retreat:
+                retreat_path = retreat_pathing.get_path(p, limit=retreat_path_limit)
                 if retreat_pathing.dist[p] == np.inf:
                     action = Move(unit, self.start_location)
+                elif len(retreat_path) < retreat_path_limit:
+                    action = AttackMove(unit, Point2(retreat_path[-1]))
                 else:
-                    action = Move(unit, Point2(retreat_pathing.get_path(p, limit=3)[-1]))
+                    action = Move(unit, Point2(retreat_path[-1]))
             else:
                 action = HoldPosition(unit)
 
-            previous_action = self._action_cache.get(unit.tag, None)
-            if action and action != previous_action:
+            is_repeated = action == self._action_cache.get(unit.tag, None)
+            if action and not is_repeated:
                 self._action_cache[unit.tag] = action
                 yield action
 
