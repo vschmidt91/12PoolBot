@@ -35,11 +35,11 @@ class Micro(Component):
         )
 
     def micro_army(self, combat_prediction: CombatPrediction) -> Iterable[Action]:
-        attack_targets = [_point2_to_point(s.position) for s in self.all_enemy_units.not_flying]
+        attack_targets = [_point2_to_point(s.position) for s in self.enemy_units.not_flying]
         retreat_targets = [_point2_to_point(w.position) for w in self.workers]
 
         pathing = self.game_info.pathing_grid.data_numpy.T
-        pathing_cost = np.where(pathing == 0, np.inf, 1 + np.exp(-combat_prediction.combat_outcome))
+        pathing_cost = np.where(pathing == 0, np.inf, 1 + np.exp(-3 * combat_prediction.confidence))
         # pathing_cost = np.where(pathing == 0, np.inf, 1.0)
         retreat_pathing = shortest_paths_opt(pathing_cost, retreat_targets, diagonal=True)
         attack_pathing = shortest_paths_opt(pathing_cost, attack_targets, diagonal=True)
@@ -47,7 +47,7 @@ class Micro(Component):
         for unit in self.units({UnitTypeId.ZERGLING, UnitTypeId.MUTALISK}):
             p = _point2_to_point(unit.position.rounded)
 
-            attack_path_limit = 3
+            attack_path_limit = 5
             retreat_path_limit = 3
             attack_path = attack_pathing.get_path(p, limit=attack_path_limit)
 

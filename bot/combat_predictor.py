@@ -39,7 +39,7 @@ def _civilian_presence(context: CombatPredictionContext) -> np.ndarray:
     return civilian_presence
 
 
-def _combat_presence(context: CombatPredictionContext, lancester_power: float = 1.6) -> CombatPresence:
+def _combat_presence(context: CombatPredictionContext, lancester_power: float = 1.0) -> CombatPresence:
     force = np.zeros_like(context.pathing, dtype=float)
     enemy_force = np.zeros_like(context.pathing, dtype=float)
     for unit in context.combatants:
