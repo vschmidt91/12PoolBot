@@ -87,6 +87,8 @@ class Micro(Component):
             a = self.game_info.playable_area
             return Point2(np.random.uniform((a.x, a.y), (a.right, a.top)))
 
+        if self.enemy_structures.not_flying.exists:
+            return self.enemy_structures.not_flying.random.position
         for p in self.enemy_start_locations:
             if not self.is_visible(p):
                 return p
