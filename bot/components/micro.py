@@ -6,14 +6,11 @@ from sc2.ids.ability_id import AbilityId
 from sc2.ids.buff_id import BuffId
 from sc2.ids.unit_typeid import UnitTypeId
 from sc2.position import Point2
-from skimage.measure import block_reduce
 
 from ..action import Action, Attack, Move, UseAbility
 from ..combat_predictor import CombatPrediction
-from ..utils.dijkstra import DijkstraOutput, Point, shortest_paths_opt
+from ..utils.dijkstra import Point, shortest_paths_opt
 from .component import Component
-
-_OFFSET = Point2((0.5, 0.5))
 
 
 def _point2_to_point(p: Point2) -> Point:
@@ -22,8 +19,6 @@ def _point2_to_point(p: Point2) -> Point:
 
 
 class Micro(Component):
-    _target_dict: dict[int, Point2] = dict()
-
     def micro(self, combat_prediction: CombatPrediction) -> Iterable[Action]:
         return chain(
             self.micro_army(combat_prediction),
@@ -31,43 +26,33 @@ class Micro(Component):
         )
 
     def micro_army(self, combat_prediction: CombatPrediction) -> Iterable[Action]:
-        start_locations = sorted(self.enemy_start_locations, key=self.is_visible, reverse=True)
-        attack_target = next(
-            chain(
-                (s.position for s in self.enemy_structures),
-                start_locations,
-            )
-        )
         pathing = self.game_info.pathing_grid.data_numpy.T
-        paths: DijkstraOutput | None = None
+        pathing_cost = np.where(pathing == 0, np.inf, np.exp(-3 * combat_prediction.confidence))
+
+        retreat_targets = [_point2_to_point(w.position) for w in self.workers]
+        retreat_paths = shortest_paths_opt(pathing_cost, retreat_targets, diagonal=True)
+
+        attack_targets = [_point2_to_point(s.position) for s in self.enemy_units.not_flying]
+        attack_paths = shortest_paths_opt(pathing_cost, attack_targets, diagonal=True)
 
         for unit in self.units({UnitTypeId.ZERGLING, UnitTypeId.MUTALISK}):
-            if unit.is_idle:
-                self._target_dict.pop(unit.tag, None)
-            target = self._target_dict.setdefault(unit.tag, attack_target)
+            p = _point2_to_point(unit.position.rounded)
+            attack_path = attack_paths.get_path(p, limit=5)
 
-            x, y = unit.position.rounded
-            local_confidence = combat_prediction.confidence[x, y]
-
-            threshold = -0.5
-            reduction = 2
-            path_limit = 3
-
-            if local_confidence > threshold:
-                yield Attack(unit, target)
-            else:
-                if paths is None:
-                    sources = [_point2_to_point(w.position / reduction) for w in self.workers]
-                    cost = np.where(pathing == 0, np.inf, np.exp(-3 * combat_prediction.confidence))
-                    cost_reduced = block_reduce(cost, reduction, np.max)
-                    paths = shortest_paths_opt(cost_reduced, sources, diagonal=True)
-
-                retreat_path = paths.get_path(_point2_to_point(unit.position / reduction), limit=path_limit)
-                if len(retreat_path) < 2:
+            if combat_prediction.confidence[attack_path[-1]] < -0.5:
+                if combat_prediction.presence.enemy_force[p] == 0:
+                    yield UseAbility(unit, AbilityId.HOLDPOSITION)
+                elif retreat_paths.dist[p] == np.inf:
                     yield Move(unit, self.start_location)
                 else:
-                    target = Point2(retreat_path[-1]).offset(_OFFSET) * reduction
-                    yield Move(unit, target)
+                    retreat_path = retreat_paths.get_path(p, limit=3)
+                    yield Move(unit, Point2(retreat_path[-1]))
+            else:
+                if attack_paths.dist[p] == np.inf:
+                    yield Attack(unit, self.enemy_start_locations[0])
+                else:
+                    attack_target = attack_path[min(2, len(attack_path) - 1)]
+                    yield Attack(unit, Point2(attack_target))
 
     def micro_queens(self) -> Iterable[Action]:
         queens = (q for q in self.mediator.get_own_army_dict[UnitTypeId.QUEEN] if q.energy >= 25 and q.is_idle)

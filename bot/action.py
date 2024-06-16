@@ -47,7 +47,6 @@ class UseAbility(Action):
     target: Optional[Point2] = None
 
     async def execute(self, bot: AresBot) -> bool:
-        logger.info(self)
         return self.unit(self.ability, target=self.target)
 
 

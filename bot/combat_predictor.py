@@ -26,6 +26,7 @@ class CombatPresence:
 @dataclass
 class CombatPrediction:
     # civilian_presence: np.ndarray
+    presence: CombatPresence
     combat_outcome: np.ndarray
     confidence: np.ndarray
 
@@ -40,8 +41,8 @@ def _civilian_presence(context: CombatPredictionContext) -> np.ndarray:
 
 
 def _combat_presence(context: CombatPredictionContext) -> CombatPresence:
-    force = np.ones_like(context.pathing, dtype=float)
-    enemy_force = np.ones_like(context.pathing, dtype=float)
+    force = np.zeros_like(context.pathing, dtype=float)
+    enemy_force = np.zeros_like(context.pathing, dtype=float)
     for unit in context.combatants:
         d = context.disk(unit.position, unit.radius + unit.sight_range)
         m = enemy_force if unit.is_enemy else force
@@ -53,9 +54,10 @@ def predict(context: CombatPredictionContext) -> CombatPrediction:
     combat_presence = _combat_presence(context)
     # civilian_presence = _civilian_presence(context)
     combat_outcome = combat_presence.force - combat_presence.enemy_force
-    confidence = combat_outcome / (combat_presence.force + combat_presence.enemy_force)
+    confidence = combat_outcome / np.maximum(combat_presence.force, combat_presence.enemy_force)
     return CombatPrediction(
         # civilian_presence=civilian_presence,
         combat_outcome=combat_outcome,
         confidence=confidence,
+        presence=combat_presence,
     )

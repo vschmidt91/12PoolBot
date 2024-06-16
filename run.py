@@ -73,7 +73,7 @@ def main():
             map_list.remove(m)
 
         random_race = random.choice([Race.Zerg, Race.Terran, Race.Protoss])
-        random_race = Race.Protoss
+        random_race = Race.Terran
         print("Starting local game...")
         run_game(
             maps.get(random.choice(map_list)),
