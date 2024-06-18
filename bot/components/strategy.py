@@ -1,7 +1,6 @@
 from dataclasses import dataclass
 
 import numpy as np
-from ares.behaviors.macro import Mining
 from sc2.ids.buff_id import BuffId
 from sc2.ids.unit_typeid import UnitTypeId
 from sc2.ids.upgrade_id import UpgradeId
@@ -48,7 +47,6 @@ class Strategy(Component):
 
         vespene_target = 3 if mutalisk_switch else np.clip(mine_gas_for_speed, 0, 3)
         tech_building_position = self.start_location.towards(self.game_info.map_center, 8)
-        self.register_behavior(Mining(workers_per_gas=vespene_target))
         return StrategyDecision(
             build_unit=build_unit,
             vespene_target=vespene_target,

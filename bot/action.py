@@ -7,6 +7,7 @@ from ares.consts import UnitRole
 from loguru import logger
 from sc2.ids.ability_id import AbilityId
 from sc2.ids.unit_typeid import UnitTypeId
+from sc2.ids.upgrade_id import UpgradeId
 from sc2.position import Point2
 from sc2.unit import Unit
 
@@ -71,3 +72,21 @@ class Build(Action):
             return self.unit.build(self.type_id, placement)
         else:
             return False
+
+
+@dataclass
+class Train(Action):
+    trainer: Unit
+    unit: UnitTypeId
+
+    async def execute(self, bot: AresBot) -> bool:
+        return self.trainer.train(self.unit)
+
+
+@dataclass
+class Research(Action):
+    researcher: Unit
+    upgrade: UpgradeId
+
+    async def execute(self, bot: AresBot) -> bool:
+        return self.researcher.research(self.upgrade)

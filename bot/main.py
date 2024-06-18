@@ -1,11 +1,12 @@
 from itertools import chain
 
 from ares import DEBUG, AresBot
+from ares.behaviors.macro import Mining
 from loguru import logger
 from sc2.constants import WORKER_TYPES
 
 from .combat_predictor import CombatPredictionContext, predict
-from .components.macro.macro import Macro
+from .components.macro import Macro
 from .components.micro import Micro
 from .components.strategy import Strategy
 from .utils.debug import save_map
@@ -24,7 +25,7 @@ class TwelvePoolBot(Strategy, Micro, Macro, AresBot):
         strategy = self.decide_strategy()
         combat_prediction = predict(self.prediction_context)
         actions = chain(
-            self.macro(strategy),
+            self.macro(strategy.build_unit),
             self.micro(combat_prediction),
         )
         for action in actions:
@@ -34,6 +35,8 @@ class TwelvePoolBot(Strategy, Micro, Macro, AresBot):
                     raise Exception(f"Action failed: {action}")
                 else:
                     logger.warning(f"Action failed: {action}")
+
+        self.register_behavior(Mining(workers_per_gas=strategy.vespene_target))
 
     @property
     def prediction_context(self) -> CombatPredictionContext:
