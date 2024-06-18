@@ -40,7 +40,7 @@ class TwelvePoolBot(Strategy, Micro, Macro, AresBot):
             logger.info(f"Limiting micro actions: {len(micro_actions)} => {self.max_micro_actions}")
             micro_actions = np.random.choice(micro_actions, size=self.max_micro_actions, replace=False)
 
-        actions = macro_actions + micro_actions
+        actions = chain(macro_actions, micro_actions)
         for action in actions:
             success = await action.execute(self)
             if not success:
