@@ -1,12 +1,12 @@
 from itertools import chain
 
-from sc2.ids.unit_typeid import UnitTypeId
-
+import numpy as np
 from ares import DEBUG, AresBot
 from ares.behaviors.macro import Mining
 from ares.consts import CHANGELING_TYPES
 from loguru import logger
 from sc2.constants import WORKER_TYPES
+from sc2.ids.unit_typeid import UnitTypeId
 
 from .combat_predictor import CombatPredictionContext, predict
 from .components.macro import Macro
@@ -18,6 +18,8 @@ EXCLUDE_TYPES = WORKER_TYPES | CHANGELING_TYPES | {UnitTypeId.LARVA, UnitTypeId.
 
 
 class TwelvePoolBot(Strategy, Micro, Macro, AresBot):
+    max_micro_actions = 100
+
     async def on_start(self) -> None:
         await super().on_start()
 
@@ -29,10 +31,16 @@ class TwelvePoolBot(Strategy, Micro, Macro, AresBot):
 
         strategy = self.decide_strategy()
         combat_prediction = predict(self.prediction_context)
-        actions = chain(
-            self.macro(strategy.build_unit),
-            self.micro(combat_prediction),
-        )
+
+        macro_actions = list(self.macro(strategy.build_unit))
+        micro_actions = list(self.micro(combat_prediction))
+
+        # avoid APM bug
+        if self.max_micro_actions < len(micro_actions):
+            logger.info(f"Limiting micro actions: {len(micro_actions)} => {self.max_micro_actions}")
+            micro_actions = np.random.choice(micro_actions, size=self.max_micro_actions, replace=False)
+
+        actions = macro_actions + micro_actions
         for action in actions:
             success = await action.execute(self)
             if not success:
@@ -45,9 +53,7 @@ class TwelvePoolBot(Strategy, Micro, Macro, AresBot):
 
     @property
     def prediction_context(self) -> CombatPredictionContext:
-        combatants = [u
-                      for u in chain(self.all_own_units, self.all_enemy_units)
-                      if u.type_id not in EXCLUDE_TYPES]
+        combatants = [u for u in chain(self.all_own_units, self.all_enemy_units) if u.type_id not in EXCLUDE_TYPES]
         return CombatPredictionContext(
             pathing=self.game_info.pathing_grid.data_numpy.T,
             civilians=chain(self.structures, self.enemy_structures),

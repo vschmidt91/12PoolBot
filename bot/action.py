@@ -46,7 +46,7 @@ class HoldPosition(Action):
     unit: Unit
 
     async def execute(self, bot: AresBot) -> bool:
-        return self.unit.hold_position()
+        return self.unit.stop()
 
 
 @dataclass

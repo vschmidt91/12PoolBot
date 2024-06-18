@@ -35,7 +35,6 @@ class Micro(Component):
         )
 
     def micro_army(self, combat_prediction: CombatPrediction) -> Iterable[Action]:
-
         attack_targets = [
             _point2_to_point(u.position)
             for u in chain(combat_prediction.context.combatants, combat_prediction.context.civilians)
@@ -51,12 +50,12 @@ class Micro(Component):
         for unit in self.units({UnitTypeId.ZERGLING, UnitTypeId.MUTALISK}):
             p = _point2_to_point(unit.position.rounded)
 
-            attack_path_limit = int(unit.sight_range)
-            retreat_path_limit = int(unit.sight_range)
+            attack_path_limit = 8
+            retreat_path_limit = 8
             attack_path = attack_pathing.get_path(p, limit=attack_path_limit)
 
             combat_action: CombatAction
-            if -0.5 <= combat_prediction.confidence[attack_path[-1]]:
+            if 0 <= combat_prediction.confidence[attack_path[-1]]:
                 combat_action = CombatAction.Attack
             elif 0 == combat_prediction.presence.enemy_force[p]:
                 combat_action = CombatAction.Hold
