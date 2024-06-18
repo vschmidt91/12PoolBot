@@ -25,6 +25,7 @@ class CombatPresence:
 
 @dataclass
 class CombatPrediction:
+    context: CombatPredictionContext
     presence: CombatPresence
     combat_outcome: np.ndarray
     confidence: np.ndarray
@@ -54,6 +55,7 @@ def predict(context: CombatPredictionContext) -> CombatPrediction:
     combat_outcome = combat_presence.force - combat_presence.enemy_force
     confidence = combat_outcome / np.maximum(combat_presence.force, combat_presence.enemy_force)
     return CombatPrediction(
+        context=context,
         combat_outcome=combat_outcome,
         confidence=confidence,
         presence=combat_presence,

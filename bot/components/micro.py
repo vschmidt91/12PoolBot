@@ -35,11 +35,16 @@ class Micro(Component):
         )
 
     def micro_army(self, combat_prediction: CombatPrediction) -> Iterable[Action]:
-        attack_targets = [_point2_to_point(s.position) for s in self.enemy_units.not_flying]
+
+        attack_targets = [
+            _point2_to_point(u.position)
+            for u in chain(combat_prediction.context.combatants, combat_prediction.context.civilians)
+            if u.is_enemy and not u.is_flying
+        ]
         retreat_targets = [_point2_to_point(w.position) for w in self.workers]
 
         pathing = self.game_info.pathing_grid.data_numpy.T
-        pathing_cost = np.where(pathing == 0, np.inf, 1 + np.maximum(0, -3 * combat_prediction.confidence))
+        pathing_cost = np.where(pathing == 0, np.inf, 1 + np.maximum(0, -7 * combat_prediction.confidence))
         retreat_pathing = shortest_paths_opt(pathing_cost, retreat_targets, diagonal=True)
         attack_pathing = shortest_paths_opt(pathing_cost, attack_targets, diagonal=True)
 
@@ -62,7 +67,7 @@ class Micro(Component):
             if combat_action == CombatAction.Attack:
                 if attack_pathing.dist[p] < np.inf:
                     action = AttackMove(unit, Point2(attack_path[-1]))
-                elif unit.is_idle:
+                elif unit.is_idle or unit.is_using_ability(AbilityId.HOLDPOSITION):
                     action = AttackMove(unit, self.random_scout_target())
             elif combat_action == CombatAction.Retreat:
                 retreat_path = retreat_pathing.get_path(p, limit=retreat_path_limit)
