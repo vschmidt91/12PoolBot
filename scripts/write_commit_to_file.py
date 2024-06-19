@@ -1,7 +1,7 @@
 import os
 
 VERSION_FILE_NAME: str = "version.txt"
-COMMIT_ENV: str = "CI_COMMIT_SHORT_SHA"
+COMMIT_ENV: str = "GITHUB_COMMIT"
 
 if __name__ == "__main__":
     print("Writing version to file ...")

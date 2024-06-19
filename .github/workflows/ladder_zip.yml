@@ -28,7 +28,7 @@ jobs:
         run: poetry install --no-root
       - name: Save commit hash
         env:
-          CI_COMMIT_SHORT_SHA: ${{ CI_COMMIT_SHORT_SHA }}
+          GITHUB_COMMIT: ${{ github.sha }}
         run: poetry run python scripts/write_commit_hash_to_file.py
       - name: Compile ladder zip
         run: poetry run python scripts/create_ladder_zip.py
