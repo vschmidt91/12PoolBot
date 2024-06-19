@@ -9,7 +9,7 @@ from loguru import logger
 from sc2.constants import WORKER_TYPES
 from sc2.ids.unit_typeid import UnitTypeId
 
-from .consts import VERSION_FILE, UNKNOWN_VERSION
+from .consts import VERSION_FILE, UNKNOWN_VERSION, TAG_MICRO_THROTTLING, TAG_ACTION_FAILED
 from .combat_predictor import CombatPredictionContext, predict
 from .components.macro import Macro
 from .components.micro import Micro
@@ -41,11 +41,15 @@ class TwelvePoolBot(Strategy, Micro, Macro, Tags, AresBot):
         strategy = self.decide_strategy()
         combat_prediction = predict(self.prediction_context)
 
+        if strategy.build_unit not in {UnitTypeId.ZERGLING, UnitTypeId.DRONE}:
+            await self.add_tag(f"macro_{strategy.build_unit}")
+
         macro_actions = list(self.macro(strategy.build_unit))
         micro_actions = list(self.micro(combat_prediction))
 
         # avoid APM bug
         if self.max_micro_actions < len(micro_actions):
+            await self.add_tag(TAG_MICRO_THROTTLING)
             logger.info(f"Limiting micro actions: {len(micro_actions)} => {self.max_micro_actions}")
             micro_actions = np.random.choice(micro_actions, size=self.max_micro_actions, replace=False)
 
@@ -53,6 +57,7 @@ class TwelvePoolBot(Strategy, Micro, Macro, Tags, AresBot):
         for action in actions:
             success = await action.execute(self)
             if not success:
+                await self.add_tag(TAG_ACTION_FAILED)
                 if self.config[DEBUG]:
                     raise Exception(f"Action failed: {action}")
                 else:
