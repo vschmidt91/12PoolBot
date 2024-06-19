@@ -29,7 +29,7 @@ jobs:
       - name: Save commit hash
         env:
           GITHUB_COMMIT: ${{ github.sha }}
-        run: poetry run python scripts/write_commit_hash_to_file.py
+        run: poetry run python scripts/write_commit_to_file.py
       - name: Compile ladder zip
         run: poetry run python scripts/create_ladder_zip.py
       - uses: montudor/action-zip@v1
