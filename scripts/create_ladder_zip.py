@@ -23,6 +23,7 @@ ZIP_FILES: List[str] = [
     "config.yaml",
     "ladder.py",
     "run.py",
+    "version.txt",
     "terran_builds.yml",
     "terran_builds.yaml",
     "protoss_builds.yml",

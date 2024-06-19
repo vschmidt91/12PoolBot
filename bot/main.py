@@ -1,4 +1,5 @@
 from itertools import chain
+import os
 
 import numpy as np
 from ares import DEBUG, AresBot
@@ -8,23 +9,31 @@ from loguru import logger
 from sc2.constants import WORKER_TYPES
 from sc2.ids.unit_typeid import UnitTypeId
 
+from .consts import VERSION_FILE, UNKNOWN_VERSION
 from .combat_predictor import CombatPredictionContext, predict
 from .components.macro import Macro
 from .components.micro import Micro
 from .components.strategy import Strategy
+from .components.tags import Tags
 from .utils.debug import save_map
 
 EXCLUDE_TYPES = WORKER_TYPES | CHANGELING_TYPES | {UnitTypeId.LARVA, UnitTypeId.EGG, UnitTypeId.BROODLING}
 
 
-class TwelvePoolBot(Strategy, Micro, Macro, AresBot):
+class TwelvePoolBot(Strategy, Micro, Macro, Tags, AresBot):
     max_micro_actions = 100
+    version: str = UNKNOWN_VERSION
 
     async def on_start(self) -> None:
         await super().on_start()
 
         if self.config[DEBUG]:
             save_map(self.game_info, "resources")
+
+        if os.path.exists(VERSION_FILE):
+            with open(VERSION_FILE) as f:
+                self.version = f.read()
+        await self.add_tag(f"version_{self.version}")
 
     async def on_step(self, iteration: int) -> None:
         await super().on_step(iteration)
