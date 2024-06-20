@@ -26,7 +26,7 @@ class CombatAction(Enum):
 
 
 class Micro(Component):
-    confidence_boost = 0.5
+    confidence_boost = 0.0
     _action_cache: dict[int, Action] = {}
 
     def micro(self, combat_prediction: CombatPrediction) -> Iterable[Action]:
@@ -38,30 +38,30 @@ class Micro(Component):
     def micro_army(self, combat_prediction: CombatPrediction) -> Iterable[Action]:
         attack_targets = [
             _point2_to_point(u.position)
-            for u in chain(combat_prediction.context.combatants, combat_prediction.context.civilians)
+            for u in combat_prediction.context.enemy_units
             if u.is_enemy and not u.is_flying
         ]
         retreat_targets = [_point2_to_point(w.position) for w in self.workers]
 
         pathing = self.game_info.pathing_grid.data_numpy.T
-        pathing_cost = np.where(pathing == 0, np.inf, 1 + np.maximum(0, -3 * combat_prediction.confidence))
+        pathing_cost = np.where(pathing == 0, np.inf, 1 + combat_prediction.enemy_presence.ground_dps)
         retreat_pathing = shortest_paths_opt(pathing_cost, retreat_targets, diagonal=True)
         attack_pathing = shortest_paths_opt(pathing_cost, attack_targets, diagonal=True)
 
         for unit in self.units({UnitTypeId.ZERGLING, UnitTypeId.MUTALISK}):
             p = _point2_to_point(unit.position.rounded)
 
-            attack_path_limit = 5
-            retreat_path_limit = 3
+            attack_path_limit = int(unit.sight_range) - 1
+            retreat_path_limit = int(unit.sight_range) - 1
             attack_path = attack_pathing.get_path(p, limit=attack_path_limit)
 
             combat_action: CombatAction
-            if 0 <= combat_prediction.confidence[attack_path[-1]] + self.confidence_boost:
+            if -1 <= combat_prediction.bitterness[attack_path[-1]] + self.confidence_boost:
                 combat_action = CombatAction.Attack
-            elif 0 == combat_prediction.presence.enemy_force[p]:
-                combat_action = CombatAction.Hold
-            else:
+            elif 0 < combat_prediction.enemy_presence.ground_dps[p]:
                 combat_action = CombatAction.Retreat
+            else:
+                combat_action = CombatAction.Hold
 
             action: Action | None = None
             if combat_action == CombatAction.Attack:

@@ -1,5 +1,5 @@
-from itertools import chain
 import os
+from itertools import chain
 
 import numpy as np
 from ares import DEBUG, AresBot
@@ -9,15 +9,20 @@ from loguru import logger
 from sc2.constants import WORKER_TYPES
 from sc2.ids.unit_typeid import UnitTypeId
 
-from .consts import VERSION_FILE, UNKNOWN_VERSION, TAG_MICRO_THROTTLING, TAG_ACTION_FAILED
 from .combat_predictor import CombatPredictionContext, predict
 from .components.macro import Macro
 from .components.micro import Micro
 from .components.strategy import Strategy
 from .components.tags import Tags
+from .consts import (
+    TAG_ACTION_FAILED,
+    TAG_MICRO_THROTTLING,
+    UNKNOWN_VERSION,
+    VERSION_FILE,
+)
 from .utils.debug import save_map
 
-EXCLUDE_TYPES = WORKER_TYPES | CHANGELING_TYPES | {UnitTypeId.LARVA, UnitTypeId.EGG, UnitTypeId.BROODLING}
+EXCLUDE_FROM_COMBAT = WORKER_TYPES | CHANGELING_TYPES | {UnitTypeId.LARVA, UnitTypeId.EGG}
 
 
 class TwelvePoolBot(Strategy, Micro, Macro, Tags, AresBot):
@@ -38,8 +43,16 @@ class TwelvePoolBot(Strategy, Micro, Macro, Tags, AresBot):
     async def on_step(self, iteration: int) -> None:
         await super().on_step(iteration)
 
+        pathing = self.game_info.pathing_grid.data_numpy.T
         strategy = self.decide_strategy()
-        combat_prediction = predict(self.prediction_context)
+        units = self.all_own_units.exclude_type(EXCLUDE_FROM_COMBAT)
+        enemy_units = self.all_enemy_units.exclude_type(EXCLUDE_FROM_COMBAT)
+        prediction_context = CombatPredictionContext(
+            pathing=pathing,
+            units=units,
+            enemy_units=enemy_units,
+        )
+        combat_prediction = predict(prediction_context)
 
         if strategy.build_unit not in {UnitTypeId.ZERGLING, UnitTypeId.DRONE}:
             await self.add_tag(f"macro_{strategy.build_unit}")
@@ -51,7 +64,7 @@ class TwelvePoolBot(Strategy, Micro, Macro, Tags, AresBot):
         if self.max_micro_actions < len(micro_actions):
             await self.add_tag(TAG_MICRO_THROTTLING)
             logger.info(f"Limiting micro actions: {len(micro_actions)} => {self.max_micro_actions}")
-            micro_actions = np.random.choice(micro_actions, size=self.max_micro_actions, replace=False)
+            micro_actions = np.random.choice(np.asarray(micro_actions), size=self.max_micro_actions, replace=False)
 
         actions = chain(macro_actions, micro_actions)
         for action in actions:
@@ -64,12 +77,3 @@ class TwelvePoolBot(Strategy, Micro, Macro, Tags, AresBot):
                     logger.warning(f"Action failed: {action}")
 
         self.register_behavior(Mining(workers_per_gas=strategy.vespene_target))
-
-    @property
-    def prediction_context(self) -> CombatPredictionContext:
-        combatants = [u for u in chain(self.all_own_units, self.all_enemy_units) if u.type_id not in EXCLUDE_TYPES]
-        return CombatPredictionContext(
-            pathing=self.game_info.pathing_grid.data_numpy.T,
-            civilians=chain(self.structures, self.enemy_structures),
-            combatants=combatants,
-        )

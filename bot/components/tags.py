@@ -1,11 +1,3 @@
-from dataclasses import dataclass
-
-import numpy as np
-from sc2.ids.buff_id import BuffId
-from sc2.ids.unit_typeid import UnitTypeId
-from sc2.ids.upgrade_id import UpgradeId
-from sc2.position import Point2
-
 from .component import Component
 
 
