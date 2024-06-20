@@ -4,7 +4,7 @@ import numpy as np
 import skimage.draw
 from sc2.position import Point2
 from sc2.units import Units
-from utils.dijkstra import Point
+from .utils.dijkstra import Point
 
 
 @dataclass
