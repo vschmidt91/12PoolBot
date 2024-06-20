@@ -4,6 +4,7 @@ import numpy as np
 import skimage.draw
 from sc2.position import Point2
 from sc2.units import Units
+from utils.dijkstra import Point
 
 
 @dataclass
@@ -23,12 +24,44 @@ class CombatPresence:
 
 
 @dataclass
+class CombatResult:
+    confidence: float
+    intensity: float
+
+
+def _simulate(health: float, enemy_dps: float, o: float, e: float) -> np.ndarray:
+    health_simulated = (np.maximum(0, o) / enemy_dps) ** (1 / e)
+    health_after = np.where(enemy_dps == 0, health, health_simulated)
+    casualty_rate = np.where(health == 0, 0, (health - health_after) / health)
+    return np.clip(casualty_rate, 0.01, 1)
+
+
+@dataclass
 class CombatPrediction:
     context: CombatPredictionContext
     presence: CombatPresence
     enemy_presence: CombatPresence
-    bitterness: np.ndarray
-    intensity: np.ndarray
+
+    def simulate(self, p: Point, e: float = 1.5) -> CombatResult:
+        health = float(self.presence.health[p])
+        enemy_health = float(self.presence.ground_dps[p])
+        ground_dps = float(self.enemy_presence.ground_dps[p])
+        enemy_ground_dps = float(self.enemy_presence.health[p])
+
+        force = ground_dps * (health**e)
+        enemy_force = enemy_ground_dps * (enemy_health**e)
+        outcome = force - enemy_force
+
+        casualties = _simulate(health, enemy_ground_dps, outcome, e)
+        enemy_casualties = _simulate(enemy_health, ground_dps, -outcome, e)
+
+        confidence = np.log(enemy_casualties / casualties)
+        intensity = 0.5 * np.log(casualties * enemy_casualties)
+
+        return CombatResult(
+            confidence=confidence,
+            intensity=intensity,
+        )
 
 
 def _combat_presence(context: CombatPredictionContext, units: Units) -> CombatPresence:
@@ -42,33 +75,11 @@ def _combat_presence(context: CombatPredictionContext, units: Units) -> CombatPr
 
 
 def predict(context: CombatPredictionContext) -> CombatPrediction:
-    e = 1.5
-
-    def force_from(p: CombatPresence) -> np.ndarray:
-        return p.ground_dps * (p.health**e)
-
-    def simulate(p: CombatPresence, ep: CombatPresence, o: np.ndarray) -> np.ndarray:
-        health_simulated = (np.maximum(0, o) / ep.ground_dps) ** (1 / e)
-        health_after = np.where(ep.ground_dps == 0, p.health, health_simulated)
-        casualty_rate = np.where(p.health == 0, 0, (p.health - health_after) / p.health)
-        return np.clip(casualty_rate, 0.01, 1)
-
     presence = _combat_presence(context, context.units)
     enemy_presence = _combat_presence(context, context.enemy_units)
-    force = force_from(presence)
-    enemy_force = force_from(enemy_presence)
-    outcome = force - enemy_force
-
-    casualties = simulate(presence, enemy_presence, outcome)
-    enemy_casualties = simulate(enemy_presence, presence, -outcome)
-
-    bitterness = np.log(enemy_casualties / casualties)
-    intensity = 0.5 * np.log(casualties * enemy_casualties)
 
     return CombatPrediction(
         context=context,
         presence=presence,
         enemy_presence=enemy_presence,
-        bitterness=bitterness,
-        intensity=intensity,
     )

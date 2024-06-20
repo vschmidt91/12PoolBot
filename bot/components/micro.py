@@ -26,7 +26,6 @@ class CombatAction(Enum):
 
 
 class Micro(Component):
-    confidence_boost = 0.0
     _action_cache: dict[int, Action] = {}
 
     def micro(self, combat_prediction: CombatPrediction) -> Iterable[Action]:
@@ -56,7 +55,8 @@ class Micro(Component):
             attack_path = attack_pathing.get_path(p, limit=attack_path_limit)
 
             combat_action: CombatAction
-            if -1 <= combat_prediction.bitterness[attack_path[-1]] + self.confidence_boost:
+            combat_simulation = combat_prediction.simulate(attack_path[-1])
+            if -1 <= combat_simulation.confidence:
                 combat_action = CombatAction.Attack
             elif 0 < combat_prediction.enemy_presence.ground_dps[p]:
                 combat_action = CombatAction.Retreat
