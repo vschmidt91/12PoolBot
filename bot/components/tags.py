@@ -9,4 +9,5 @@ class Tags(Component):
             return False
         message = f"Tag:{tag}"
         await self.chat_send(message)
+        self._tags.add(tag)
         return True
