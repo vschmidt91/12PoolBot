@@ -50,13 +50,13 @@ class Micro(Component):
         for unit in self.units({UnitTypeId.ZERGLING, UnitTypeId.MUTALISK}):
             p = _point2_to_point(unit.position.rounded)
 
-            attack_path_limit = int(unit.sight_range) - 1
-            retreat_path_limit = int(unit.sight_range) - 1
+            attack_path_limit = int(unit.sight_range)
+            retreat_path_limit = int(unit.sight_range)
             attack_path = attack_pathing.get_path(p, limit=attack_path_limit)
 
             combat_action: CombatAction
             combat_simulation = combat_prediction.simulate(attack_path[-1])
-            if -1 <= combat_simulation.confidence:
+            if 0 <= combat_simulation.confidence:
                 combat_action = CombatAction.Attack
             elif 0 < combat_prediction.enemy_presence.ground_dps[p]:
                 combat_action = CombatAction.Retreat

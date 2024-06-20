@@ -34,6 +34,9 @@ class TwelvePoolBot(Strategy, Micro, Macro, Tags, AresBot):
     async def on_start(self) -> None:
         await super().on_start()
 
+        # await self.client.debug_create_unit([[UnitTypeId.ZERGLING, 100, self.game_info.map_center, 1]])
+        # await self.client.debug_create_unit([[UnitTypeId.ZERGLING, 100, self.game_info.map_center, 2]])
+
         if sys.gettrace():
             self.config[DEBUG] = True
 
@@ -49,7 +52,7 @@ class TwelvePoolBot(Strategy, Micro, Macro, Tags, AresBot):
         await super().on_step(iteration)
 
         profiler: cProfile.Profile | None = None
-        if self.config[DEBUG] and (iteration % 100) == 0:
+        if self.config[DEBUG] and (iteration % 100) == 1:
             profiler = cProfile.Profile()
 
         if profiler:
