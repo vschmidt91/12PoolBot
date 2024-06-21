@@ -43,22 +43,23 @@ class Micro(Component):
         retreat_targets = [_point2_to_point(w.position) for w in self.workers]
 
         pathing = self.game_info.pathing_grid.data_numpy.T
-        pathing_cost = np.where(pathing == 0, np.inf, 1 + combat_prediction.enemy_presence.ground_dps)
-        retreat_pathing = shortest_paths_opt(pathing_cost, retreat_targets, diagonal=True)
-        attack_pathing = shortest_paths_opt(pathing_cost, attack_targets, diagonal=True)
+        pathing_cost = np.where(pathing == 0, np.inf, 1 + np.maximum(0, np.log1p(combat_prediction.enemy_presence)))
+        # pathing_cost = np.where(combat_prediction.enemy_presence * combat_prediction.presence == 0, np.inf, pathing_cost)
+        retreat_pathing = shortest_paths_opt(pathing_cost, retreat_targets, diagonal=False)
+        attack_pathing = shortest_paths_opt(pathing_cost, attack_targets, diagonal=False)
 
         for unit in self.units({UnitTypeId.ZERGLING, UnitTypeId.MUTALISK}):
             p = _point2_to_point(unit.position.rounded)
 
-            attack_path_limit = int(unit.sight_range)
-            retreat_path_limit = int(unit.sight_range)
+            attack_path_limit = 7
+            retreat_path_limit = 3
             attack_path = attack_pathing.get_path(p, limit=attack_path_limit)
 
             combat_action: CombatAction
-            combat_simulation = combat_prediction.simulate(attack_path[-1])
-            if 0 <= combat_simulation.confidence:
+            combat_simulation = combat_prediction.confidence[attack_path[-1]]
+            if 0 <= combat_simulation:
                 combat_action = CombatAction.Attack
-            elif 0 < combat_prediction.enemy_presence.ground_dps[p]:
+            elif 0 < combat_prediction.enemy_presence[p]:
                 combat_action = CombatAction.Retreat
             else:
                 combat_action = CombatAction.Hold
