@@ -75,7 +75,7 @@ class TwelvePoolBot(Strategy, Micro, Macro, Tags, AresBot):
             stats.dump_stats(PROFILING_FILE)
 
         if strategy.build_unit not in {UnitTypeId.ZERGLING, UnitTypeId.DRONE}:
-            await self.add_tag(f"macro_{strategy.build_unit}")
+            await self.add_tag(f"macro_{strategy.build_unit.name}")
 
         macro_actions = list(self.macro(strategy.build_unit))
         micro_actions = list(self.micro(combat_prediction))

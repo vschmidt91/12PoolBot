@@ -8,6 +8,6 @@ class Tags(Component):
         if tag in self._tags:
             return False
         message = f"Tag:{tag}"
-        await self.chat_send(message)
+        await self.chat_send(message, team_only=True)
         self._tags.add(tag)
         return True
