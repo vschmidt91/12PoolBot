@@ -41,7 +41,7 @@ class Micro(Component):
         retreat_targets = [_point2_to_point(w.position) for w in self.workers]
 
         pathing = combat_prediction.context.pathing
-        pathing_cost = np.where(pathing != 1.0, np.inf, 1 + combat_prediction.enemy_presence)
+        pathing_cost = np.where(pathing != 1.0, np.inf, 1 + np.log1p(combat_prediction.enemy_presence))
         retreat_pathing = shortest_paths_opt(pathing_cost, retreat_targets, diagonal=False)
         attack_pathing = shortest_paths_opt(pathing_cost, attack_targets, diagonal=True)
 
