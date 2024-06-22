@@ -69,14 +69,14 @@ def shortest_paths_opt(
     while Q:
         elem = heapq.heappop(Q)
         u = elem.position
-        du = float(dist[u])
+        du = dist[u]
         if elem.distance == du:
             neighbours = [(_neighbours(*u), 1.0)]
             if diagonal:
                 neighbours.append((_neighbours_diagonal(*u), _DIAGONAL_WEIGHT))
             for vs, d in neighbours:
                 for v in vs:
-                    alt = du + float(cost[v]) * d
+                    alt = du + cost[v] * d
                     if alt < dist[v]:
                         dist[v] = alt
                         prev[v] = u

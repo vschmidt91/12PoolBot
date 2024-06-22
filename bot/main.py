@@ -11,13 +11,12 @@ from ares.behaviors.macro import Mining
 from loguru import logger
 from sc2.ids.unit_typeid import UnitTypeId
 
-from .combat_predictor import CombatPredictionContext, predict
+from .components.combat_predictor import CombatPredictor
 from .components.macro import Macro
 from .components.micro import Micro
 from .components.strategy import Strategy
 from .components.tags import Tags
 from .consts import (
-    EXCLUDE_FROM_COMBAT,
     PROFILING_FILE,
     TAG_ACTION_FAILED,
     TAG_MICRO_THROTTLING,
@@ -27,52 +26,38 @@ from .consts import (
 from .utils.debug import save_map
 
 
-class TwelvePoolBot(Strategy, Micro, Macro, Tags, AresBot):
+class TwelvePoolBot(CombatPredictor, Strategy, Micro, Macro, Tags, AresBot):
     max_micro_actions = 100
     version: str = UNKNOWN_VERSION
 
     async def on_start(self) -> None:
         await super().on_start()
 
-        # await self.client.debug_create_unit([[UnitTypeId.ZERGLING, 100, self.game_info.map_center, 1]])
-        # await self.client.debug_create_unit([[UnitTypeId.ZERGLING, 100, self.game_info.map_center, 2]])
-
         if sys.gettrace():
             self.config[DEBUG] = True
 
         if self.config[DEBUG]:
             save_map(self.game_info, "resources")
+            await self.client.debug_create_unit([[UnitTypeId.ZERGLING, 100, self.game_info.map_center, 1]])
+            await self.client.debug_create_unit([[UnitTypeId.ZERGLING, 100, self.game_info.map_center, 2]])
 
         if os.path.exists(VERSION_FILE):
             with open(VERSION_FILE) as f:
                 self.version = f.read()
+
         await self.add_tag(f"version_{self.version}")
 
     async def on_step(self, iteration: int) -> None:
         await super().on_step(iteration)
 
         profiler: cProfile.Profile | None = None
-        if self.config[DEBUG] and (iteration % 100) == 1:
+        if self.config[DEBUG] and (iteration % 30) == 10:
             profiler = cProfile.Profile()
 
         if profiler:
             profiler.enable()
-        pathing = self.game_info.pathing_grid.data_numpy.T
         strategy = self.decide_strategy()
-        units = self.all_own_units.exclude_type(EXCLUDE_FROM_COMBAT)
-        enemy_units = self.all_enemy_units.exclude_type(EXCLUDE_FROM_COMBAT)
-        prediction_context = CombatPredictionContext(
-            pathing=pathing,
-            units=units,
-            enemy_units=enemy_units,
-        )
-        combat_prediction = predict(prediction_context)
-        if profiler:
-            profiler.disable()
-            stats_io = io.StringIO()
-            stats = pstats.Stats(profiler, stream=stats_io).sort_stats(pstats.SortKey.CUMULATIVE).print_stats(100)
-            logger.info(stats_io.getvalue())
-            stats.dump_stats(PROFILING_FILE)
+        combat_prediction = self.predict_combat()
 
         if strategy.build_unit not in {UnitTypeId.ZERGLING, UnitTypeId.DRONE}:
             await self.add_tag(f"macro_{strategy.build_unit.name}")
@@ -85,6 +70,13 @@ class TwelvePoolBot(Strategy, Micro, Macro, Tags, AresBot):
             await self.add_tag(TAG_MICRO_THROTTLING)
             logger.info(f"Limiting micro actions: {len(micro_actions)} => {self.max_micro_actions}")
             micro_actions = np.random.choice(np.asarray(micro_actions), size=self.max_micro_actions, replace=False)
+
+        if profiler:
+            profiler.disable()
+            stats_io = io.StringIO()
+            stats = pstats.Stats(profiler, stream=stats_io).sort_stats(pstats.SortKey.CUMULATIVE).print_stats(24)
+            logger.info(stats_io.getvalue())
+            stats.dump_stats(PROFILING_FILE)
 
         actions = chain(macro_actions, micro_actions)
         for action in actions:

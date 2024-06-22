@@ -1,7 +1,8 @@
 from typing import Iterable
 
-from ares.consts import ALL_STRUCTURES
+from ares.consts import ALL_STRUCTURES, UnitRole
 from ares.dicts.unit_tech_requirement import UNIT_TECH_REQUIREMENT
+from cython_extensions import cy_unit_pending
 from sc2.dicts.unit_trained_from import UNIT_TRAINED_FROM
 from sc2.dicts.upgrade_researched_from import UPGRADE_RESEARCHED_FROM
 from sc2.ids.unit_typeid import UnitTypeId
@@ -39,6 +40,8 @@ class Macro(Component):
         return DoNothing()
 
     def expand(self) -> Action | None:
+        if self.mediator.get_unit_role_dict[UnitRole.PERSISTENT_BUILDER]:
+            return None
         if not (target := self.get_next_expansion()):
             return None
         return self.build_unit(UnitTypeId.HATCHERY, target=target, limit=1)
@@ -88,7 +91,7 @@ class Macro(Component):
     def build_unit(self, unit: UnitTypeId, target: Point2 | None = None, limit: int | None = None) -> Action | None:
         if self.supply_left < self.calculate_supply_cost(unit):
             return None
-        elif limit is not None and limit <= self.already_pending(unit):
+        elif limit is not None and limit <= cy_unit_pending(self, unit):
             return None
         elif not (trainer := self.find_trainer(unit, target=target)):
             return None

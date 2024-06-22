@@ -1,16 +1,18 @@
+import random
 from enum import Enum, auto
-from itertools import chain
+from itertools import chain, cycle
 from typing import Iterable
 
 import numpy as np
+from cython_extensions import cy_closest_to, cy_find_units_center_mass
 from sc2.ids.ability_id import AbilityId
 from sc2.ids.buff_id import BuffId
 from sc2.ids.unit_typeid import UnitTypeId
 from sc2.position import Point2
 
 from ..action import Action, AttackMove, HoldPosition, Move, UseAbility
-from ..combat_predictor import CombatPrediction
 from ..utils.dijkstra import Point, shortest_paths_opt
+from .combat_predictor import CombatPrediction
 from .component import Component
 
 
@@ -35,23 +37,22 @@ class Micro(Component):
         )
 
     def micro_army(self, combat_prediction: CombatPrediction) -> Iterable[Action]:
-        attack_targets = [
-            _point2_to_point(u.position)
-            for u in combat_prediction.context.enemy_units
-            if u.is_enemy and not u.is_flying
-        ]
+        target_units = combat_prediction.context.enemy_units.not_flying
+        attack_targets = [_point2_to_point(u.position) for u in target_units]
+        attack_targets.extend(p.rounded for p in self.enemy_start_locations)
         retreat_targets = [_point2_to_point(w.position) for w in self.workers]
 
-        pathing = self.game_info.pathing_grid.data_numpy.T
-        pathing_cost = np.where(pathing == 0, np.inf, 1 + np.maximum(0, np.log1p(combat_prediction.enemy_presence)))
+        pathing = combat_prediction.context.pathing
+        pathing_cost = np.where(pathing != 1.0, np.inf, 1 + combat_prediction.enemy_presence)
         # pathing_cost = np.where(combat_prediction.enemy_presence * combat_prediction.presence == 0, np.inf, pathing_cost)
         retreat_pathing = shortest_paths_opt(pathing_cost, retreat_targets, diagonal=False)
-        attack_pathing = shortest_paths_opt(pathing_cost, attack_targets, diagonal=False)
+        attack_pathing = shortest_paths_opt(pathing_cost, attack_targets, diagonal=True)
 
-        for unit in self.units({UnitTypeId.ZERGLING, UnitTypeId.MUTALISK}):
+        units = self.units({UnitTypeId.ZERGLING, UnitTypeId.MUTALISK})
+        for unit, target in zip(units, cycle(attack_targets)):
             p = _point2_to_point(unit.position.rounded)
 
-            attack_path_limit = 7
+            attack_path_limit = int(unit.sight_range) - 2
             retreat_path_limit = 3
             attack_path = attack_pathing.get_path(p, limit=attack_path_limit)
 
@@ -68,7 +69,9 @@ class Micro(Component):
             if combat_action == CombatAction.Attack:
                 if attack_pathing.dist[p] < np.inf:
                     action = AttackMove(unit, Point2(attack_path[-1]))
-                elif unit.is_idle or unit.is_using_ability(AbilityId.HOLDPOSITION):
+                elif target_units:
+                    action = AttackMove(unit, Point2(target))
+                elif unit.is_idle:
                     action = AttackMove(unit, self.random_scout_target())
             elif combat_action == CombatAction.Retreat:
                 retreat_path = retreat_pathing.get_path(p, limit=retreat_path_limit)

@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 
 import numpy as np
+from cython_extensions import cy_unit_pending
 from sc2.ids.buff_id import BuffId
 from sc2.ids.unit_typeid import UnitTypeId
 from sc2.ids.upgrade_id import UpgradeId
@@ -33,7 +34,7 @@ class Strategy(Component):
             self.minerals < 150
             and self.state.score.collection_rate_minerals < 1.2 * max_spending  # aim for a 20% surplus
             and self.state.score.food_used_economy < sum(h.ideal_harvesters for h in self.townhalls)
-            and not self.already_pending(UnitTypeId.DRONE)
+            and not cy_unit_pending(self, UnitTypeId.DRONE)
         )
 
         mine_gas_for_speed = (
