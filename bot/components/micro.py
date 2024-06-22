@@ -1,10 +1,8 @@
-import random
 from enum import Enum, auto
 from itertools import chain, cycle
 from typing import Iterable
 
 import numpy as np
-from cython_extensions import cy_closest_to, cy_find_units_center_mass
 from sc2.ids.ability_id import AbilityId
 from sc2.ids.buff_id import BuffId
 from sc2.ids.unit_typeid import UnitTypeId
@@ -44,7 +42,6 @@ class Micro(Component):
 
         pathing = combat_prediction.context.pathing
         pathing_cost = np.where(pathing != 1.0, np.inf, 1 + combat_prediction.enemy_presence)
-        # pathing_cost = np.where(combat_prediction.enemy_presence * combat_prediction.presence == 0, np.inf, pathing_cost)
         retreat_pathing = shortest_paths_opt(pathing_cost, retreat_targets, diagonal=False)
         attack_pathing = shortest_paths_opt(pathing_cost, attack_targets, diagonal=True)
 
