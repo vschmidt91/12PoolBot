@@ -23,7 +23,7 @@ class HeapElement:
 @dataclass
 class DijkstraOutput:
     dist: np.ndarray
-    prev: dict[Point, Point]
+    prev: np.ndarray
     sources: set[Point]
 
     def get_path(self, target: Point, limit: float = math.inf):
@@ -31,7 +31,7 @@ class DijkstraOutput:
         u: Point | None = target
         while u and len(path) < limit:
             path.append(u)
-            u = self.prev.get(u)
+            u = self.prev[u]
         return path
 
 
@@ -57,9 +57,10 @@ def shortest_paths_opt(
     cost: np.ndarray,
     sources: list[Point],
     diagonal: bool = False,
+    limit: float = np.inf
 ) -> DijkstraOutput:
     dist = np.full_like(cost, math.inf, dtype=float)
-    prev: dict[Point, Point] = {}
+    prev = np.full_like(cost, None, dtype=object)
 
     Q: list[HeapElement] = []
     for s in sources:
@@ -77,7 +78,7 @@ def shortest_paths_opt(
             for vs, d in neighbours:
                 for v in vs:
                     alt = du + cost[v] * d
-                    if alt < dist[v]:
+                    if alt < dist[v] and alt < limit:
                         dist[v] = alt
                         prev[v] = u
                         heapq.heappush(Q, HeapElement(v, alt))

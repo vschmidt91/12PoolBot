@@ -3,6 +3,7 @@ from itertools import chain, cycle
 from typing import Iterable
 
 import numpy as np
+import scipy
 from sc2.ids.ability_id import AbilityId
 from sc2.ids.buff_id import BuffId
 from sc2.ids.unit_typeid import UnitTypeId
@@ -41,21 +42,31 @@ class Micro(Component):
         retreat_targets = [_point2_to_point(w.position) for w in self.workers]
 
         pathing = combat_prediction.context.pathing
-        pathing_cost = np.where(pathing != 1.0, np.inf, 1 + np.log1p(combat_prediction.enemy_presence))
-        retreat_pathing = shortest_paths_opt(pathing_cost, retreat_targets, diagonal=False)
-        attack_pathing = shortest_paths_opt(pathing_cost, attack_targets, diagonal=True)
+        #pathing_cost = np.where(pathing != 1.0, np.inf, 1 + np.log1p(combat_prediction.enemy_presence))
+        pathing_cost = np.where(pathing != 1.0, np.inf, 1)
+        pathing_cost = self.mediator.get_map_data_object.get_pyastar_grid()
+        #pathing_cost += scipy.stats.halfnorm.rvs(0, 1e-3, size=pathing.shape)
+        #retreat_pathing = shortest_paths_opt(pathing_cost, retreat_targets)
+        #attack_pathing = shortest_paths_opt(pathing_cost, attack_targets, limit=20)
 
         units = self.units({UnitTypeId.ZERGLING, UnitTypeId.MUTALISK})
-        for unit, target in zip(units, cycle(attack_targets)):
+        for unit, target, retreat_target in zip(units, cycle(attack_targets), cycle(retreat_targets)):
             p = _point2_to_point(unit.position.rounded)
 
             attack_path_limit = int(unit.sight_range) - 2
             retreat_path_limit = 3
-            attack_path = attack_pathing.get_path(p, limit=attack_path_limit)
+            #attack_path = attack_pathing.get_path(p, limit=attack_path_limit)
+            attack_path = self.mediator.get_map_data_object.pathfind(
+                start=unit.position,
+                goal=target,
+                grid=pathing_cost,
+            ) or [p]
+            if attack_path_limit < len(attack_path):
+                attack_path = attack_path[:attack_path_limit]
 
             combat_action: CombatAction
             combat_simulation = combat_prediction.confidence[attack_path[-1]]
-            if 0 <= combat_simulation:
+            if -1/4 <= combat_simulation:
                 combat_action = CombatAction.Attack
             elif 0 < combat_prediction.enemy_presence[p]:
                 combat_action = CombatAction.Retreat
@@ -64,16 +75,22 @@ class Micro(Component):
 
             action: Action | None = None
             if combat_action == CombatAction.Attack:
-                if attack_pathing.dist[p] < np.inf:
+                if 1 < len(attack_path):
                     action = AttackMove(unit, Point2(attack_path[-1]))
                 elif target_units:
                     action = AttackMove(unit, Point2(target))
                 elif unit.is_idle:
                     action = AttackMove(unit, self.random_scout_target())
             elif combat_action == CombatAction.Retreat:
-                retreat_path = retreat_pathing.get_path(p, limit=retreat_path_limit)
-                if retreat_pathing.dist[p] == np.inf:
-                    action = Move(unit, self.start_location)
+                retreat_path = self.mediator.get_map_data_object.pathfind(
+                    start=unit.position,
+                    goal=retreat_target,
+                    grid=pathing_cost,
+                ) or [p]
+                if retreat_path_limit < len(retreat_path):
+                    retreat_path = retreat_path[:retreat_path_limit]
+                if 1 == len(retreat_path):
+                    action = Move(unit, Point2(retreat_target))
                 elif len(retreat_path) < retreat_path_limit:
                     action = AttackMove(unit, Point2(retreat_path[-1]))
                 else:

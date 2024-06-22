@@ -38,8 +38,8 @@ class TwelvePoolBot(CombatPredictor, Strategy, Micro, Macro, Tags, AresBot):
 
         if self.config[DEBUG]:
             save_map(self.game_info, "resources")
-            await self.client.debug_create_unit([[UnitTypeId.ZERGLING, 100, self.game_info.map_center, 1]])
-            await self.client.debug_create_unit([[UnitTypeId.ZERGLING, 100, self.game_info.map_center, 2]])
+            #await self.client.debug_create_unit([[UnitTypeId.ZERGLING, 12, self.game_info.map_center, 1]])
+            #await self.client.debug_create_unit([[UnitTypeId.ZERGLING, 12, self.game_info.map_center, 2]])
 
         if os.path.exists(VERSION_FILE):
             with open(VERSION_FILE) as f:
