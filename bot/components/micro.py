@@ -35,7 +35,7 @@ class Micro(Component):
         attack_targets.extend(p.rounded for p in self.enemy_start_locations)
         retreat_targets = [w.position for w in self.workers]
 
-        pathing = combat_prediction.context.pathing + np.maximum(0.0, -combat_prediction.confidence)
+        pathing = combat_prediction.context.pathing + combat_prediction.enemy_presence.dps
 
         if self.config[DEBUG]:
             self.mediator.get_map_data_object.draw_influence_in_game(pathing)
@@ -54,10 +54,10 @@ class Micro(Component):
                 attack_path = attack_path[:attack_path_limit]
 
             combat_action: CombatAction
-            combat_simulation = combat_prediction.confidence[attack_path[-1]]
+            combat_simulation = combat_prediction.confidence(attack_path[-1])
             if 0 <= combat_simulation:
                 combat_action = CombatAction.Attack
-            elif 0 < combat_prediction.enemy_presence[p]:
+            elif 0 < combat_prediction.enemy_presence.dps[p]:
                 combat_action = CombatAction.Retreat
             else:
                 combat_action = CombatAction.Hold
