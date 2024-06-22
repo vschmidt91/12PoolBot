@@ -43,7 +43,7 @@ class Strategy(Component):
 
         mutalisk_switch = self.enemy_structures.flying and not self.enemy_structures.not_flying
         build_unit = (
-            UnitTypeId.MUTALISK if mutalisk_switch else UnitTypeId.DRONE if should_drone else UnitTypeId.ZERGLING
+            UnitTypeId.DRONE if should_drone else (UnitTypeId.MUTALISK if mutalisk_switch else UnitTypeId.ZERGLING)
         )
 
         vespene_target = 3 if mutalisk_switch else np.clip(mine_gas_for_speed, 0, 3)

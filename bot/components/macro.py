@@ -1,7 +1,7 @@
 from typing import Iterable
 
 from ares.consts import ALL_STRUCTURES
-from ares.dicts.unit_tech_requirement import UNIT_TECH_REQUIREMENT
+from sc2.dicts.unit_train_build_abilities import TRAIN_INFO
 from sc2.dicts.unit_trained_from import UNIT_TRAINED_FROM
 from sc2.dicts.upgrade_researched_from import UPGRADE_RESEARCHED_FROM
 from sc2.ids.unit_typeid import UnitTypeId
@@ -44,7 +44,15 @@ class Macro(Component):
         return self.build_unit(UnitTypeId.HATCHERY, target=target, limit=1)
 
     def make_tech(self, unit: UnitTypeId) -> Action | None:
-        for requirement in UNIT_TECH_REQUIREMENT.get(unit, []):
+        build_structures: set[UnitTypeId] = set()
+        if unit == UnitTypeId.ZERGLING:
+            build_structures.add(UnitTypeId.SPAWNINGPOOL)
+        elif unit == UnitTypeId.MUTALISK:
+            build_structures.add(UnitTypeId.SPAWNINGPOOL)
+            build_structures.add(UnitTypeId.LAIR)
+            build_structures.add(UnitTypeId.SPIRE)
+
+        for requirement in build_structures:
             if action := self.build_unit(
                 requirement,
                 target=self.tech_building_position,
@@ -93,8 +101,10 @@ class Macro(Component):
         elif not (trainer := self.find_trainer(unit, target=target)):
             return None
         elif not self.can_afford(unit):
-            return DoNothing()
-        elif target:
+            return None
+        elif self.tech_requirement_progress(unit) < 1:
+            return None
+        elif TRAIN_INFO[trainer.type_id][unit].get("requires_placement_position", False):
             return Build(trainer, unit, target)
         return Train(trainer, unit)
 

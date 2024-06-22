@@ -38,5 +38,6 @@ module = [
     "sc2.*",
     "scipy.*",
     "sklearn.*",
+    "cython_extensions.*",
 ]
 ignore_missing_imports = true

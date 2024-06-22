@@ -3,10 +3,10 @@ from dataclasses import dataclass
 
 import numpy as np
 import skimage.draw
-from ..consts import EXCLUDE_FROM_COMBAT
 from sc2.position import Point2
 from sc2.units import Units
 
+from ..consts import EXCLUDE_FROM_COMBAT
 from .component import Component
 
 
@@ -37,7 +37,8 @@ class CombatPredictor(Component):
     def predict_combat(self) -> CombatPrediction:
         units = self.all_own_units.exclude_type(EXCLUDE_FROM_COMBAT)
         enemy_units = self.all_enemy_units.exclude_type(EXCLUDE_FROM_COMBAT)
-        pathing = self.mediator.get_map_data_object.get_pyastar_grid()
+        pather = self.mediator.get_map_data_object
+        pathing = pather.get_pyastar_grid()
         context = CombatPredictionContext(
             pathing=pathing,
             units=units,
@@ -46,7 +47,7 @@ class CombatPredictor(Component):
 
         presence = self.combat_presence(context.units)
         enemy_presence = self.combat_presence(context.enemy_units)
-        confidence = (presence - enemy_presence) / np.maximum(presence, enemy_presence)
+        confidence = np.log(presence / enemy_presence)
         return CombatPrediction(
             context=context,
             presence=presence,
@@ -55,12 +56,20 @@ class CombatPredictor(Component):
         )
 
     def combat_presence(self, units: Units) -> np.ndarray:
-        force = np.zeros(self.game_info.map_size, dtype=float)
+        grid = self.mediator.get_map_data_object.get_pyastar_grid()
         for unit in units:
-            dps = self.ground_dps_fast(unit.type_id)
+            dps = self.dps_fast(unit.type_id)
             if 0 < dps:
-                d = _disk(unit.sight_range)
-                i, j = unit.position.rounded + d
                 health = unit.health + unit.shield
-                force[i.astype(int), j.astype(int)] += dps * health
-        return force
+                grid = self.mediator.get_map_data_object.add_cost(
+                    position=unit.position,
+                    radius=unit.sight_range,
+                    grid=grid,
+                    weight=dps * health,
+                )
+                # d = _disk(unit.sight_range)
+                # i, j = unit.position.rounded + d
+                #
+                # force[i.astype(int), j.astype(int)] += dps * health
+
+        return grid

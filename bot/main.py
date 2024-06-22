@@ -4,6 +4,7 @@ import os
 import pstats
 import sys
 from itertools import chain
+import random
 
 import numpy as np
 from ares import DEBUG, AresBot
@@ -37,9 +38,11 @@ class TwelvePoolBot(CombatPredictor, Strategy, Micro, Macro, Tags, AresBot):
             self.config[DEBUG] = True
 
         if self.config[DEBUG]:
+            # increase number of decimal places
+            pstats.f8 = lambda x: "%14.9f" % x  # type: ignore
             save_map(self.game_info, "resources")
-            #await self.client.debug_create_unit([[UnitTypeId.ZERGLING, 12, self.game_info.map_center, 1]])
-            #await self.client.debug_create_unit([[UnitTypeId.ZERGLING, 12, self.game_info.map_center, 2]])
+            # await self.client.debug_create_unit([[UnitTypeId.ZERGLING, 12, self.game_info.map_center, 1]])
+            # await self.client.debug_create_unit([[UnitTypeId.ZERGLING, 12, self.game_info.map_center, 2]])
 
         if os.path.exists(VERSION_FILE):
             with open(VERSION_FILE) as f:
@@ -69,7 +72,8 @@ class TwelvePoolBot(CombatPredictor, Strategy, Micro, Macro, Tags, AresBot):
         if self.max_micro_actions < len(micro_actions):
             await self.add_tag(TAG_MICRO_THROTTLING)
             logger.info(f"Limiting micro actions: {len(micro_actions)} => {self.max_micro_actions}")
-            micro_actions = np.random.choice(np.asarray(micro_actions), size=self.max_micro_actions, replace=False)
+            random.shuffle(micro_actions)
+            micro_actions = micro_actions[:self.max_micro_actions]
 
         if profiler:
             profiler.disable()

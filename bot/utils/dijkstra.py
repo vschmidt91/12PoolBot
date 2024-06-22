@@ -54,10 +54,7 @@ def _neighbours_diagonal(x: int, y: int) -> list[Point]:
 
 
 def shortest_paths_opt(
-    cost: np.ndarray,
-    sources: list[Point],
-    diagonal: bool = False,
-    limit: float = np.inf
+    cost: np.ndarray, sources: list[Point], diagonal: bool = False, limit: float = np.inf
 ) -> DijkstraOutput:
     dist = np.full_like(cost, math.inf, dtype=float)
     prev = np.full_like(cost, None, dtype=object)
