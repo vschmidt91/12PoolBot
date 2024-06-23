@@ -68,7 +68,7 @@ class CombatPredictor(Component):
         )
 
     def combat_presence(self, units: Units) -> CombatPresence:
-        count_map = self.mediator.get_map_data_object.get_pyastar_grid(0)
+        count_map = self.mediator.get_map_data_object.get_clean_air_grid(0)
         dps_map = self.mediator.get_map_data_object.get_pyastar_grid(0)
         health_map = self.mediator.get_map_data_object.get_pyastar_grid(0)
         for unit in units:
@@ -93,17 +93,18 @@ class CombatPredictor(Component):
                 count_map = self.mediator.get_map_data_object.add_cost(
                     position=position,
                     radius=radius,
-                    grid=health_map,
+                    grid=count_map,
                     weight=1.0,
                     safe=False,
                 )
 
-        dps_map /= np.maximum(1, count_map)
+        dps_map /= np.maximum(1.0, count_map)
 
         return CombatPresence(dps_map, health_map)
 
     @cached_property
     def dimensionality(self) -> np.ndarray:
-        local_dimensionality = 1 + self.game_info.pathing_grid.data_numpy.T.astype(float)
-        dimensionality = scipy.ndimage.gaussian_filter(local_dimensionality, sigma=3.0)
-        return np.clip(dimensionality, 1, 2)
+        local_dimensionality = self.game_info.pathing_grid.data_numpy.T.astype(float)
+        dimensionality = scipy.ndimage.gaussian_filter(local_dimensionality, sigma=5.0) ** 2
+        dimensionality = np.clip(1 + dimensionality, 1, 2)
+        return dimensionality

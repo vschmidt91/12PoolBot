@@ -35,7 +35,7 @@ class Micro(Component):
         attack_targets.extend(p.rounded for p in self.enemy_start_locations)
         retreat_targets = [w.position for w in self.workers]
 
-        # pathing = combat_prediction.context.pathing + combat_prediction.enemy_presence.dps
+        pathing = combat_prediction.context.pathing + combat_prediction.enemy_presence.dps
         pathing = self.mediator.get_map_data_object.get_pyastar_grid()
 
         if self.config[DEBUG]:
@@ -44,8 +44,8 @@ class Micro(Component):
         units = self.units({UnitTypeId.ZERGLING, UnitTypeId.MUTALISK})
         for unit, target, retreat_target in zip(units, cycle(attack_targets), cycle(retreat_targets)):
             p = unit.position.rounded
-            attack_path_limit = int(unit.sight_range) - 2
-            retreat_path_limit = int(unit.sight_range) - 2
+            attack_path_limit = int(unit.sight_range)
+            retreat_path_limit = int(unit.sight_range)
             attack_path = self.mediator.get_map_data_object.pathfind(
                 start=unit.position,
                 goal=target,
