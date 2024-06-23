@@ -106,4 +106,4 @@ class CombatPredictor(Component):
     def dimensionality(self) -> np.ndarray:
         local_dimensionality = 1 + self.game_info.pathing_grid.data_numpy.T.astype(float)
         dimensionality = scipy.ndimage.gaussian_filter(local_dimensionality, sigma=3.0)
-        return dimensionality
+        return np.clip(dimensionality, 1, 2)

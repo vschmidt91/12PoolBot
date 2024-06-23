@@ -35,7 +35,8 @@ class Micro(Component):
         attack_targets.extend(p.rounded for p in self.enemy_start_locations)
         retreat_targets = [w.position for w in self.workers]
 
-        pathing = combat_prediction.context.pathing + combat_prediction.enemy_presence.dps
+        # pathing = combat_prediction.context.pathing + combat_prediction.enemy_presence.dps
+        pathing = self.mediator.get_map_data_object.get_pyastar_grid()
 
         if self.config[DEBUG]:
             self.mediator.get_map_data_object.draw_influence_in_game(pathing)
