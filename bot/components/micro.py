@@ -44,8 +44,8 @@ class Micro(Component):
         units = self.units({UnitTypeId.ZERGLING, UnitTypeId.MUTALISK})
         for unit, target, retreat_target in zip(units, cycle(attack_targets), cycle(retreat_targets)):
             p = unit.position.rounded
-            attack_path_limit = int(unit.sight_range)
-            retreat_path_limit = int(unit.sight_range)
+            attack_path_limit = 5
+            retreat_path_limit = 3
             attack_path = self.mediator.get_map_data_object.pathfind(
                 start=unit.position,
                 goal=target,
