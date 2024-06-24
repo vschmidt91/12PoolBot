@@ -23,7 +23,7 @@ class HeapElement:
 @dataclass
 class DijkstraOutput:
     dist: np.ndarray
-    prev: np.ndarray
+    prev: dict[Point, Point]
     sources: set[Point]
 
     def get_path(self, target: Point, limit: float = math.inf):
@@ -31,7 +31,7 @@ class DijkstraOutput:
         u: Point | None = target
         while u and len(path) < limit:
             path.append(u)
-            u = self.prev[u]
+            u = self.prev.get(u)
         return path
 
 
@@ -52,12 +52,19 @@ def _neighbours_diagonal(x: int, y: int) -> list[Point]:
         (x + 1, y + 1),
     ]
 
+NEIGHBOURS = [
+    (-1, 0),
+    (+1, 0),
+    (0, -1),
+    (0, +1),
+]
+
 
 def shortest_paths_opt(
-    cost: np.ndarray, sources: list[Point], diagonal: bool = False, limit: float = np.inf
+    cost: np.ndarray, sources: list[Point],
 ) -> DijkstraOutput:
     dist = np.full_like(cost, math.inf, dtype=float)
-    prev = np.full_like(cost, None, dtype=object)
+    prev = dict()
 
     Q: list[HeapElement] = []
     for s in sources:
@@ -65,20 +72,14 @@ def shortest_paths_opt(
         Q.append(HeapElement(s, 0.0))
 
     while Q:
-        elem = heapq.heappop(Q)
-        u = elem.position
-        du = dist[u]
-        if elem.distance == du:
-            neighbours = [(_neighbours(*u), 1.0)]
-            if diagonal:
-                neighbours.append((_neighbours_diagonal(*u), _DIAGONAL_WEIGHT))
-            for vs, d in neighbours:
-                for v in vs:
-                    alt = du + cost[v] * d
-                    if alt < dist[v] and alt < limit:
-                        dist[v] = alt
-                        prev[v] = u
-                        heapq.heappush(Q, HeapElement(v, alt))
+        u = x, y = heapq.heappop(Q).position
+        for dx, dy in NEIGHBOURS:
+            v = x + dx, y + dy
+            alt = dist[u] + cost[v]
+            if alt < dist[v]:
+                dist[v] = alt
+                prev[v] = u
+                heapq.heappush(Q, HeapElement(v, alt))
 
     output = DijkstraOutput(dist, prev, set(sources))
     return output
