@@ -26,6 +26,8 @@ jobs:
         run: poetry run pip install -U pip
       - name: Install requirements
         run: poetry install --no-root
+      - name: Compile Cython
+        run: pip install -e .
       - name: Save commit hash
         env:
           GITHUB_COMMIT: ${{ github.sha }}
