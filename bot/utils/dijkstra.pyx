@@ -256,7 +256,20 @@ cpdef test_01():
     free_pqueue(&pqueue)
 
 
-cpdef DTYPE_t[:, :] dijkstra_ref(
+cdef class DijkstraOutput:
+    cdef public Py_ssize_t[:, :] prev_x
+    cdef public Py_ssize_t[:, :] prev_y
+    cdef public DTYPE_t[:, :] dist
+    def __cinit__(self,
+                  Py_ssize_t[:, :] prev_x,
+                  Py_ssize_t[:, :] prev_y,
+                  DTYPE_t[:, :] dist,
+                  ):
+        self.prev_x = prev_x
+        self.prev_y = prev_y
+        self.dist = dist
+
+cpdef DijkstraOutput cy_dijkstra(
     DTYPE_t[:, :] cost,
     Py_ssize_t[:, :] targets,
 ):
@@ -297,4 +310,4 @@ cpdef DTYPE_t[:, :] dijkstra_ref(
                 prev_y[x2, y2] = y
                 insert(&q, x2 + y2 * width, alternative)
 
-    return dist
+    return DijkstraOutput(prev_x, prev_y, dist)

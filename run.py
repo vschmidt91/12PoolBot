@@ -75,7 +75,7 @@ def main():
         random_race = random.choice([
             Race.Zerg,
             Race.Terran,
-            Race.Protoss,
+            # Race.Protoss,
         ])
         print("Starting local game...")
         run_game(

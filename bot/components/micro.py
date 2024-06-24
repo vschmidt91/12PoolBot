@@ -1,6 +1,8 @@
+from dataclasses import dataclass
 from enum import Enum, auto
 from itertools import chain, cycle
 from typing import Iterable
+import math
 
 import numpy as np
 from ares.consts import DEBUG
@@ -12,12 +14,42 @@ from sc2.position import Point2
 from ..action import Action, AttackMove, HoldPosition, Move, UseAbility
 from .combat_predictor import CombatPrediction
 from .component import Component
+from ..utils.cy_dijkstra import cy_dijkstra
+
+Point = tuple[int, int]
 
 
 class CombatAction(Enum):
     Attack = auto()
     Hold = auto()
     Retreat = auto()
+
+
+@dataclass
+class DijkstraOutput:
+    prev_x: np.ndarray
+    prev_y: np.ndarray
+    dist: np.ndarray
+
+    @classmethod
+    def from_cy(cls, o) -> "DijkstraOutput":
+        return DijkstraOutput(
+            np.asarray(o.prev_x).astype(int),
+            np.asarray(o.prev_y).astype(int),
+            np.asarray(o.dist).astype(float),
+        )
+
+    def get_path(self, target: Point, limit: float = math.inf):
+        path: list[Point] = []
+        x, y = target
+        while len(path) < limit:
+            path.append((x, y))
+            x2 = self.prev_x[x, y]
+            y2 = self.prev_y[x, y]
+            if x2 < 0:
+                break
+            x, y = x2, y2
+        return path
 
 
 class Micro(Component):
@@ -36,7 +68,16 @@ class Micro(Component):
         retreat_targets = [w.position for w in self.workers]
 
         pathing = combat_prediction.context.pathing + combat_prediction.enemy_presence.dps
-        pathing = self.mediator.get_map_data_object.get_pyastar_grid()
+        # pathing = self.mediator.get_map_data_object.get_pyastar_grid()
+
+        attack_pathing = DijkstraOutput.from_cy(cy_dijkstra(
+            np.array(pathing, dtype=np.float64),
+            np.array(attack_targets, dtype=np.intp),
+        ))
+        retreat_pathing = DijkstraOutput.from_cy(cy_dijkstra(
+            np.array(pathing, dtype=np.float64),
+            np.array(retreat_targets, dtype=np.intp),
+        ))
 
         if self.config[DEBUG]:
             self.mediator.get_map_data_object.draw_influence_in_game(pathing)
@@ -46,17 +87,21 @@ class Micro(Component):
             p = unit.position.rounded
             attack_path_limit = 5
             retreat_path_limit = 3
-            attack_path = self.mediator.get_map_data_object.pathfind(
-                start=unit.position,
-                goal=target,
-                grid=pathing,
-            ) or [p]
-            if attack_path_limit < len(attack_path):
-                attack_path = attack_path[:attack_path_limit]
+
+            # attack_path = self.mediator.get_map_data_object.pathfind(
+            #     start=unit.position,
+            #     goal=target,
+            #     grid=pathing,
+            # ) or [p]
+            # if attack_path_limit < len(attack_path):
+            #     attack_path = attack_path[:attack_path_limit]
+            attack_path = attack_pathing.get_path(p, attack_path_limit)
 
             combat_action: CombatAction
-            combat_simulation = combat_prediction.confidence(attack_path[-1])
-            if 0 <= combat_simulation:
+            combat_simulation = combat_prediction.confidence(Point2(attack_path[-1]))
+            if np.isnan(combat_simulation):
+                combat_action = CombatAction.Attack
+            elif 0 <= combat_simulation:
                 combat_action = CombatAction.Attack
             elif 0 < combat_prediction.enemy_presence.dps[p]:
                 combat_action = CombatAction.Retreat
@@ -65,21 +110,23 @@ class Micro(Component):
 
             action: Action | None = None
             if combat_action == CombatAction.Attack:
-                if 1 < len(attack_path):
+                #if 1 < len(attack_path):
+                if attack_pathing.dist[p] < np.inf:
                     action = AttackMove(unit, Point2(attack_path[-1]))
                 elif target_units:
                     action = AttackMove(unit, Point2(target))
                 elif unit.is_idle:
                     action = AttackMove(unit, self.random_scout_target())
             elif combat_action == CombatAction.Retreat:
-                retreat_path = self.mediator.get_map_data_object.pathfind(
-                    start=unit.position,
-                    goal=retreat_target,
-                    grid=pathing,
-                ) or [p]
-                if retreat_path_limit < len(retreat_path):
-                    retreat_path = retreat_path[:retreat_path_limit]
-                if 1 == len(retreat_path):
+                # retreat_path = self.mediator.get_map_data_object.pathfind(
+                #     start=unit.position,
+                #     goal=retreat_target,
+                #     grid=pathing,
+                # ) or [p]
+                # if retreat_path_limit < len(retreat_path):
+                #     retreat_path = retreat_path[:retreat_path_limit]
+                retreat_path = retreat_pathing.get_path(p, retreat_path_limit)
+                if retreat_pathing.dist[p] == np.inf:
                     action = Move(unit, Point2(retreat_target))
                 elif len(retreat_path) < retreat_path_limit:
                     action = AttackMove(unit, Point2(retreat_path[-1]))
