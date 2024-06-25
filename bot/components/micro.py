@@ -62,10 +62,13 @@ class Micro(Component):
         )
 
     def micro_army(self, combat_prediction: CombatPrediction) -> Iterable[Action]:
+
         target_units = combat_prediction.context.enemy_units.not_flying
         attack_targets = [u.position for u in target_units]
         attack_targets.extend(p.rounded for p in self.enemy_start_locations)
+
         retreat_targets = [w.position for w in self.workers]
+        retreat_targets.append(self.start_location.rounded)
 
         pathing = combat_prediction.context.pathing + combat_prediction.enemy_presence.dps
         # pathing = self.mediator.get_map_data_object.get_pyastar_grid()
