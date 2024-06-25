@@ -52,6 +52,7 @@ def _neighbours_diagonal(x: int, y: int) -> list[Point]:
         (x + 1, y + 1),
     ]
 
+
 NEIGHBOURS = [
     (-1, 0),
     (+1, 0),
@@ -61,7 +62,8 @@ NEIGHBOURS = [
 
 
 def shortest_paths_opt(
-    cost: np.ndarray, sources: list[Point],
+    cost: np.ndarray,
+    sources: list[Point],
 ) -> DijkstraOutput:
     dist = np.full_like(cost, math.inf, dtype=float)
     prev = dict()

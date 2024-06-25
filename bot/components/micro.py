@@ -1,8 +1,8 @@
+import math
 from dataclasses import dataclass
 from enum import Enum, auto
 from itertools import chain, cycle
 from typing import Iterable
-import math
 
 import numpy as np
 from ares.consts import DEBUG
@@ -12,9 +12,9 @@ from sc2.ids.unit_typeid import UnitTypeId
 from sc2.position import Point2
 
 from ..action import Action, AttackMove, HoldPosition, Move, UseAbility
+from ..utils.cy_dijkstra import cy_dijkstra  # type: ignore
 from .combat_predictor import CombatPrediction
 from .component import Component
-from ..utils.cy_dijkstra import cy_dijkstra
 
 Point = tuple[int, int]
 
@@ -62,7 +62,6 @@ class Micro(Component):
         )
 
     def micro_army(self, combat_prediction: CombatPrediction) -> Iterable[Action]:
-
         target_units = combat_prediction.context.enemy_units.not_flying
         attack_targets = [u.position for u in target_units]
         attack_targets.extend(p.rounded for p in self.enemy_start_locations)
@@ -71,16 +70,19 @@ class Micro(Component):
         retreat_targets.append(self.start_location.rounded)
 
         pathing = combat_prediction.context.pathing + combat_prediction.enemy_presence.dps
-        # pathing = self.mediator.get_map_data_object.get_pyastar_grid()
 
-        attack_pathing = DijkstraOutput.from_cy(cy_dijkstra(
-            np.array(pathing, dtype=np.float64),
-            np.array(attack_targets, dtype=np.intp),
-        ))
-        retreat_pathing = DijkstraOutput.from_cy(cy_dijkstra(
-            np.array(pathing, dtype=np.float64),
-            np.array(retreat_targets, dtype=np.intp),
-        ))
+        attack_pathing = DijkstraOutput.from_cy(
+            cy_dijkstra(
+                np.array(pathing, dtype=np.float64),
+                np.array(attack_targets, dtype=np.intp),
+            )
+        )
+        retreat_pathing = DijkstraOutput.from_cy(
+            cy_dijkstra(
+                np.array(pathing, dtype=np.float64),
+                np.array(retreat_targets, dtype=np.intp),
+            )
+        )
 
         if self.config[DEBUG]:
             self.mediator.get_map_data_object.draw_influence_in_game(pathing)
@@ -91,13 +93,6 @@ class Micro(Component):
             attack_path_limit = 5
             retreat_path_limit = 3
 
-            # attack_path = self.mediator.get_map_data_object.pathfind(
-            #     start=unit.position,
-            #     goal=target,
-            #     grid=pathing,
-            # ) or [p]
-            # if attack_path_limit < len(attack_path):
-            #     attack_path = attack_path[:attack_path_limit]
             attack_path = attack_pathing.get_path(p, attack_path_limit)
 
             combat_action: CombatAction
@@ -113,7 +108,6 @@ class Micro(Component):
 
             action: Action | None = None
             if combat_action == CombatAction.Attack:
-                #if 1 < len(attack_path):
                 if attack_pathing.dist[p] < np.inf:
                     action = AttackMove(unit, Point2(attack_path[-1]))
                 elif target_units:
@@ -121,13 +115,6 @@ class Micro(Component):
                 elif unit.is_idle:
                     action = AttackMove(unit, self.random_scout_target())
             elif combat_action == CombatAction.Retreat:
-                # retreat_path = self.mediator.get_map_data_object.pathfind(
-                #     start=unit.position,
-                #     goal=retreat_target,
-                #     grid=pathing,
-                # ) or [p]
-                # if retreat_path_limit < len(retreat_path):
-                #     retreat_path = retreat_path[:retreat_path_limit]
                 retreat_path = retreat_pathing.get_path(p, retreat_path_limit)
                 if retreat_pathing.dist[p] == np.inf:
                     action = Move(unit, Point2(retreat_target))

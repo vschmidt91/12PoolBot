@@ -2,11 +2,10 @@ import cProfile
 import io
 import os
 import pstats
+import random
 import sys
 from itertools import chain
-import random
 
-import numpy as np
 from ares import DEBUG, AresBot
 from ares.behaviors.macro import Mining
 from loguru import logger
@@ -73,7 +72,7 @@ class TwelvePoolBot(CombatPredictor, Strategy, Micro, Macro, Tags, AresBot):
             await self.add_tag(TAG_MICRO_THROTTLING)
             logger.info(f"Limiting micro actions: {len(micro_actions)} => {self.max_micro_actions}")
             random.shuffle(micro_actions)
-            micro_actions = micro_actions[:self.max_micro_actions]
+            micro_actions = micro_actions[: self.max_micro_actions]
 
         if profiler:
             profiler.disable()

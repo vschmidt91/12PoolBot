@@ -1,5 +1,5 @@
-from functools import cached_property, lru_cache
 from dataclasses import dataclass
+from functools import cached_property, lru_cache
 
 import numpy as np
 import scipy.ndimage
@@ -41,10 +41,11 @@ class CombatPrediction:
 
 @lru_cache(maxsize=None)
 def _disk(radius: float):
+    r = int(radius + 0.5)
     p = radius, radius
-    n = 2 * radius + 1
+    n = 2 * r + 1
     d = skimage.draw.disk(center=p, radius=radius, shape=(n, n))
-    return -Point2(p) + d
+    return d[0] - r, d[1] - r
 
 
 class CombatPredictor(Component):
@@ -68,37 +69,14 @@ class CombatPredictor(Component):
         )
 
     def combat_presence(self, units: Units) -> CombatPresence:
-        count_map = self.mediator.get_map_data_object.get_clean_air_grid(0)
-        dps_map = self.mediator.get_map_data_object.get_pyastar_grid(0)
-        health_map = self.mediator.get_map_data_object.get_pyastar_grid(0)
+        dps_map = self.mediator.get_map_data_object.get_clean_air_grid(0)
+        health_map = self.mediator.get_map_data_object.get_clean_air_grid(0)
         for unit in units:
             dps = self.dps_fast(unit.type_id)
             if 0 < dps:
-                position = unit.position
-                radius = unit.sight_range
-                dps_map = self.mediator.get_map_data_object.add_cost(
-                    position=position,
-                    radius=radius,
-                    grid=dps_map,
-                    weight=dps,
-                    safe=False,
-                )
-                health_map = self.mediator.get_map_data_object.add_cost(
-                    position=position,
-                    radius=radius,
-                    grid=health_map,
-                    weight=unit.shield + unit.health,
-                    safe=False,
-                )
-                count_map = self.mediator.get_map_data_object.add_cost(
-                    position=position,
-                    radius=radius,
-                    grid=count_map,
-                    weight=1.0,
-                    safe=False,
-                )
-
-        dps_map /= np.maximum(1.0, count_map)
+                d = unit.position.rounded + _disk(unit.sight_range)
+                health_map[d] += unit.shield + unit.health
+                dps_map[d] = np.maximum(dps_map[d], dps)
 
         return CombatPresence(dps_map, health_map)
 
