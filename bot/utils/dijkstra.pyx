@@ -71,7 +71,7 @@ cpdef DijkstraOutput cy_dijkstra(
         q.pop()
         x = u.second.first
         y = u.second.second
-        for k in range(4):
+        for k in range(8):
             x2 = x + NEIGHBOURS_X[k]
             y2 = y + NEIGHBOURS_Y[k]
             alternative = dist[x, y] + NEIGHBOURS_DISTANCE[k] * cost[x2, y2]
