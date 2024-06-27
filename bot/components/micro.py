@@ -17,6 +17,7 @@ from .combat_predictor import CombatPrediction
 from .component import Component
 
 Point = tuple[int, int]
+HALF = Point2((0.5, 0.5))
 
 
 class CombatAction(Enum):
@@ -109,7 +110,7 @@ class Micro(Component):
             action: Action | None = None
             if combat_action == CombatAction.Attack:
                 if attack_pathing.dist[p] < np.inf:
-                    action = AttackMove(unit, Point2(attack_path[-1]))
+                    action = AttackMove(unit, Point2(attack_path[-1]).offset(HALF))
                 elif target_units:
                     action = AttackMove(unit, Point2(target))
                 elif unit.is_idle:
@@ -119,9 +120,9 @@ class Micro(Component):
                 if retreat_pathing.dist[p] == np.inf:
                     action = Move(unit, Point2(retreat_target))
                 elif len(retreat_path) < retreat_path_limit:
-                    action = AttackMove(unit, Point2(retreat_path[-1]))
+                    action = AttackMove(unit, Point2(retreat_path[-1]).offset(HALF))
                 else:
-                    action = Move(unit, Point2(retreat_path[-1]))
+                    action = Move(unit, Point2(retreat_path[-1]).offset(HALF))
             else:
                 action = HoldPosition(unit)
 
