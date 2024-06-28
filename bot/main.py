@@ -12,11 +12,11 @@ from ares.behaviors.macro import Mining
 from loguru import logger
 from sc2.ids.unit_typeid import UnitTypeId
 
-from .components.combat_predictor import CombatContext, CombatPrediction, predict_combat
+from .combat_predictor import CombatContext, CombatPrediction, predict_combat
 from .components.macro import Macro
 from .components.micro import Micro
 from .components.strategy import Strategy
-from .components.tags import Tags
+from .tags import Tags
 from .consts import (
     EXCLUDE_FROM_COMBAT,
     PROFILING_FILE,

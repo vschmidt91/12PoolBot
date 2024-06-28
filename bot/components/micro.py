@@ -13,7 +13,7 @@ from sc2.position import Point2
 
 from ..action import Action, AttackMove, HoldPosition, Move, UseAbility
 from ..utils.cy_dijkstra import cy_dijkstra  # type: ignore
-from .combat_predictor import CombatPrediction
+from combat_predictor import CombatPrediction
 from .component import Component
 
 Point = tuple[int, int]
