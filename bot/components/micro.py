@@ -100,7 +100,7 @@ class Micro(Component):
             combat_simulation = combat_prediction.confidence(Point2(attack_path[-1]))
             if np.isnan(combat_simulation):
                 combat_action = CombatAction.Attack
-            elif 0.2 * unit.weapon_cooldown <= combat_simulation:
+            elif 0 <= combat_simulation:
                 combat_action = CombatAction.Attack
             elif 0 < combat_prediction.enemy_presence.dps[p]:
                 combat_action = CombatAction.Retreat
