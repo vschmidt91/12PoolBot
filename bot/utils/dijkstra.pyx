@@ -10,7 +10,6 @@ from libcpp cimport bool
 from libcpp.pair cimport pair
 
 ctypedef cnp.float64_t DTYPE_t
-cdef DTYPE_t DTYPE_INF = <DTYPE_t>np.finfo(dtype=np.float64).max
 
 
 cdef extern from "cpp_priority_queue.hpp":
