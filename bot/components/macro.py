@@ -1,3 +1,4 @@
+from functools import cached_property
 from typing import Iterable
 
 from ares.consts import ALL_STRUCTURES
@@ -29,7 +30,7 @@ class Macro(Component):
             or DoNothing()
         )
 
-    @property
+    @cached_property
     def tech_building_position(self):
         return self.start_location.towards(self.game_info.map_center, 8)
 

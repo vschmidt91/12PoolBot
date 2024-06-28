@@ -70,23 +70,24 @@ class Micro(Component):
         retreat_targets = [w.position for w in self.workers]
         retreat_targets.append(self.start_location.rounded)
 
-        pathing = combat_prediction.context.pathing + combat_prediction.enemy_presence.dps
+        pathing = np.where(combat_prediction.context.pathing == 1, 1.0, np.inf)
+        pathing_cost = pathing + combat_prediction.enemy_presence.dps
 
         attack_pathing = DijkstraOutput.from_cy(
             cy_dijkstra(
-                np.array(pathing, dtype=np.float64),
+                pathing_cost.astype(np.float64),
                 np.array(attack_targets, dtype=np.intp),
             )
         )
         retreat_pathing = DijkstraOutput.from_cy(
             cy_dijkstra(
-                np.array(pathing, dtype=np.float64),
+                pathing_cost.astype(np.float64),
                 np.array(retreat_targets, dtype=np.intp),
             )
         )
 
         if self.config[DEBUG]:
-            self.mediator.get_map_data_object.draw_influence_in_game(pathing)
+            self.mediator.get_map_data_object.draw_influence_in_game(pathing_cost)
 
         units = self.units({UnitTypeId.ZERGLING, UnitTypeId.MUTALISK})
         for unit, target, retreat_target in zip(units, cycle(attack_targets), cycle(retreat_targets)):
