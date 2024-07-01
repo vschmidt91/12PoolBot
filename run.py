@@ -75,14 +75,14 @@ def main():
         random_race = random.choice([
             Race.Zerg,
             Race.Terran,
-            # Race.Protoss,
+            Race.Protoss,
         ])
         print("Starting local game...")
         run_game(
             maps.get(random.choice(map_list)),
             [
                 bot1,
-                Computer(random_race, Difficulty.CheatInsane, ai_build=AIBuild.Rush),
+                Computer(random_race, Difficulty.VeryHard, ai_build=AIBuild.Rush),
             ],
             realtime=False,
         )
