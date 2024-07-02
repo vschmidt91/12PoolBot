@@ -1,6 +1,5 @@
 import cProfile
 import io
-import lzma
 import os
 import pickle
 import pstats
@@ -44,12 +43,17 @@ class TwelvePoolBot(Strategy, Micro, Macro, AresBot):
     async def on_start(self) -> None:
         await super().on_start()
 
+        result_predictor: ResultPredictor | None = None
         if os.path.exists(RESULT_PREDICTOR_FILE):
-            with lzma.open(RESULT_PREDICTOR_FILE, "rb") as f:
-                self.result_predictor = pickle.load(f)
-        else:
+            try:
+                with open(RESULT_PREDICTOR_FILE, "rb") as f:
+                    result_predictor = pickle.load(f)
+            except Exception:
+                pass
+        if result_predictor is None:
             (state_size,) = GameState.from_bot(self).to_tensor().shape
-            self.result_predictor = ResultPredictor(input_size=state_size)
+            result_predictor = ResultPredictor(input_size=state_size)
+        self.result_predictor = result_predictor
 
         self.tags = Tags(lambda m: self.chat_send(m, team_only=True))
 
@@ -136,7 +140,7 @@ class TwelvePoolBot(Strategy, Micro, Macro, AresBot):
             result=result,
         )
         self.result_predictor.train(game)
-        with lzma.open(RESULT_PREDICTOR_FILE, "wb") as f:
+        with open(RESULT_PREDICTOR_FILE, "wb") as f:
             pickle.dump(self.result_predictor, f)
 
     def predict_combat(self) -> CombatPrediction:
