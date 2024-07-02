@@ -6,8 +6,8 @@ VERSION_FILE: str = "version.txt"
 UNKNOWN_VERSION: str = "unknown_version"
 TAG_MICRO_THROTTLING: str = "micro_throttling"
 TAG_ACTION_FAILED: str = "action_failed"
+ALL_UNITS = ALL_STRUCTURES | set(abilityid_to_unittypeid.values())
 EXCLUDE_FROM_COMBAT = WORKER_TYPES | CHANGELING_TYPES | {UnitTypeId.LARVA, UnitTypeId.EGG}
 PROFILING_FILE = "profiling"
 RESULT_PREDICTOR_FILE = "data/result_predictor.pkl"
 
-ALL_UNITS: set[UnitTypeId] = {*abilityid_to_unittypeid.values(), *ALL_STRUCTURES}

@@ -64,11 +64,13 @@ class Micro(Component):
 
     def micro_army(self, combat_prediction: CombatPrediction) -> Iterable[Action]:
         target_units = combat_prediction.context.enemy_units.not_flying
-        attack_targets = [u.position for u in target_units]
-        attack_targets.extend(p.rounded for p in self.enemy_start_locations)
+        attack_targets = self.enemy_start_locations + [u.position for u in target_units]
+        attack_center = Point2(np.median(np.array(attack_targets), axis=0))
+        attack_targets.sort(key=lambda t: t.distance_to(attack_center), reverse=True)
 
-        retreat_targets = [w.position for w in self.workers]
-        retreat_targets.append(self.start_location.rounded)
+        retreat_targets = [self.start_location] + [w.position for w in self.workers]
+        retreat_center = Point2(np.median(np.array(retreat_targets), axis=0))
+        retreat_targets.sort(key=lambda t: t.distance_to(retreat_center))
 
         pathing = np.where(combat_prediction.context.pathing == 1, 1.0, np.inf)
         pathing_cost = pathing + combat_prediction.enemy_presence.dps
@@ -89,7 +91,7 @@ class Micro(Component):
         if self.config[DEBUG]:
             self.mediator.get_map_data_object.draw_influence_in_game(pathing_cost)
 
-        units = self.units({UnitTypeId.ZERGLING, UnitTypeId.MUTALISK})
+        units = sorted(self.units({UnitTypeId.ZERGLING, UnitTypeId.MUTALISK}), key=lambda u: u.tag)
         for unit, target, retreat_target in zip(units, cycle(attack_targets), cycle(retreat_targets)):
             p = unit.position.rounded
             attack_path_limit = 5
@@ -136,9 +138,13 @@ class Micro(Component):
         self._action_cache.pop(unit_tag, None)
 
     def micro_queens(self) -> Iterable[Action]:
-        queens = (q for q in self.mediator.get_own_army_dict[UnitTypeId.QUEEN] if q.energy >= 25 and q.is_idle)
-        hatcheries = (h for h in self.townhalls if h.is_ready and not h.has_buff(BuffId.QUEENSPAWNLARVATIMER))
-        return (UseAbility(queen, AbilityId.EFFECT_INJECTLARVA, hatch) for queen, hatch in zip(queens, hatcheries))
+        queens = sorted(self.mediator.get_own_army_dict[UnitTypeId.QUEEN], key=lambda u: u.tag)
+        hatcheries = sorted(self.townhalls.ready, key=lambda u: u.tag)
+        for queen, hatchery in zip(queens, hatcheries):
+            if 25 <= queen.energy:
+                yield UseAbility(queen, AbilityId.EFFECT_INJECTLARVA, hatchery)
+            else:
+                yield AttackMove(queen, hatchery.position)
 
     def random_scout_target(self, num_attempts=10) -> Point2:
         def sample() -> Point2:

@@ -152,7 +152,7 @@ class TwelvePoolBot(Strategy, Micro, Macro, AresBot):
         context = CombatContext(
             units=units,
             enemy_units=enemy_units,
-            dps_provider=dps_provider,
+            dps=dps_provider,
             pathing=pathing,
         )
         return predict_combat(context)

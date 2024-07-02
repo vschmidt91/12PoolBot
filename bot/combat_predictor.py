@@ -16,7 +16,7 @@ DpsProvider = Callable[[UnitTypeId], float]
 class CombatContext:
     units: Units
     enemy_units: Units
-    dps_provider: DpsProvider
+    dps: DpsProvider
     pathing: np.ndarray
 
 
@@ -54,7 +54,7 @@ def _combat_presence(context: CombatContext, units: Units) -> CombatPresence:
     dps_map = np.zeros_like(context.pathing, dtype=float)
     health_map = np.zeros_like(context.pathing, dtype=float)
     for unit in units:
-        dps = context.dps_provider(unit.type_id)
+        dps = context.dps(unit.type_id)
         px, py = unit.position.rounded
         if 0 < dps:
             dx, dy = _disk(unit.sight_range)
