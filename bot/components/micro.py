@@ -138,10 +138,11 @@ class Micro(Component):
         queens = sorted(self.mediator.get_own_army_dict[UnitTypeId.QUEEN], key=lambda u: u.tag)
         hatcheries = sorted(self.townhalls, key=lambda u: u.distance_to(self.start_location))
         for queen, hatchery in zip(queens, hatcheries):
+            queen_position = hatchery.position.towards(self.game_info.map_center, queen.radius + hatchery.radius)
             if 25 <= queen.energy and hatchery.is_ready:
                 yield UseAbility(queen, AbilityId.EFFECT_INJECTLARVA, hatchery)
-            else:
-                yield AttackMove(queen, hatchery.position)
+            elif 5 < queen.distance_to(queen_position):
+                yield AttackMove(queen, queen_position)
 
     def random_scout_target(self, num_attempts=10) -> Point2:
         def sample() -> Point2:
