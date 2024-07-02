@@ -35,9 +35,9 @@ class DijkstraOutput:
     @classmethod
     def from_cy(cls, o) -> "DijkstraOutput":
         return DijkstraOutput(
-            np.asarray(o.prev_x).astype(int),
-            np.asarray(o.prev_y).astype(int),
-            np.asarray(o.dist).astype(float),
+            np.asarray(o.prev_x),
+            np.asarray(o.prev_y),
+            np.asarray(o.dist),
         )
 
     def get_path(self, target: Point, limit: float = math.inf):
@@ -72,18 +72,17 @@ class Micro(Component):
         retreat_center = Point2(np.median(np.array(retreat_targets), axis=0))
         retreat_targets.sort(key=lambda t: t.distance_to(retreat_center))
 
-        pathing = np.where(combat_prediction.context.pathing == 1, 1.0, np.inf)
-        pathing_cost = pathing + combat_prediction.enemy_presence.dps
+        pathing_cost = (combat_prediction.context.pathing + combat_prediction.enemy_presence.dps).astype(np.float64)
 
         attack_pathing = DijkstraOutput.from_cy(
             cy_dijkstra(
-                pathing_cost.astype(np.float64),
+                pathing_cost,
                 np.array(attack_targets, dtype=np.intp),
             )
         )
         retreat_pathing = DijkstraOutput.from_cy(
             cy_dijkstra(
-                pathing_cost.astype(np.float64),
+                pathing_cost,
                 np.array(retreat_targets, dtype=np.intp),
             )
         )
@@ -139,9 +138,9 @@ class Micro(Component):
 
     def micro_queens(self) -> Iterable[Action]:
         queens = sorted(self.mediator.get_own_army_dict[UnitTypeId.QUEEN], key=lambda u: u.tag)
-        hatcheries = sorted(self.townhalls.ready, key=lambda u: u.tag)
+        hatcheries = sorted(self.townhalls, key=lambda u: u.distance_to(self.start_location))
         for queen, hatchery in zip(queens, hatcheries):
-            if 25 <= queen.energy:
+            if 25 <= queen.energy and hatchery.is_ready:
                 yield UseAbility(queen, AbilityId.EFFECT_INJECTLARVA, hatchery)
             else:
                 yield AttackMove(queen, hatchery.position)

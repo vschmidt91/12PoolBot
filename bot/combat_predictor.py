@@ -65,9 +65,9 @@ def _combat_presence(context: CombatContext, units: Units) -> CombatPresence:
 
 
 def _dimensionality(pathing: np.ndarray) -> np.ndarray:
-    dimensionality_local = pathing.astype(float)
-    dimensionality_filtered = ndimage.gaussian_filter(dimensionality_local, sigma=5.0) ** 2
-    return np.clip(1 + dimensionality_filtered, 1, 2)
+    dimensionality_local = np.where(pathing == np.inf, 1.0, 2.0)
+    dimensionality_filtered = ndimage.gaussian_filter(dimensionality_local, sigma=5.0)
+    return np.clip(dimensionality_filtered, 1, 2)
 
 
 def predict_combat(context: CombatContext) -> CombatPrediction:

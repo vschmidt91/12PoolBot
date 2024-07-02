@@ -82,7 +82,7 @@ def main():
             maps.get(random.choice(map_list)),
             [
                 bot1,
-                Computer(random_race, Difficulty.VeryHard, ai_build=AIBuild.Rush),
+                Computer(random_race, Difficulty.CheatInsane, ai_build=AIBuild.Rush),
             ],
             realtime=False,
         )

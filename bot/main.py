@@ -78,8 +78,8 @@ class TwelvePoolBot(Strategy, Micro, Macro, AresBot):
         await super().on_step(iteration)
 
         profiler: cProfile.Profile | None = None
-        # if self.config[DEBUG] and (iteration % 30) == 10:
-        #     profiler = cProfile.Profile()
+        if self.config[DEBUG] and (iteration % 30) == 10:
+            profiler = cProfile.Profile()
 
         if profiler:
             profiler.enable()
@@ -148,7 +148,7 @@ class TwelvePoolBot(Strategy, Micro, Macro, AresBot):
         units = self.all_own_units.exclude_type(EXCLUDE_FROM_COMBAT)
         enemy_units = self.all_enemy_units.exclude_type(EXCLUDE_FROM_COMBAT)
         dps_provider = self.dps_fast
-        pathing = self.mediator.get_ground_grid
+        pathing = self.mediator.get_map_data_object.get_pyastar_grid()
         context = CombatContext(
             units=units,
             enemy_units=enemy_units,
