@@ -141,7 +141,7 @@ class Micro(Component):
             queen_position = hatchery.position.towards(self.game_info.map_center, queen.radius + hatchery.radius)
             if 25 <= queen.energy and hatchery.is_ready:
                 yield UseAbility(queen, AbilityId.EFFECT_INJECTLARVA, hatchery)
-            elif 5 < queen.distance_to(queen_position):
+            elif 1 < queen.distance_to(queen_position):
                 yield AttackMove(queen, queen_position)
 
     def random_scout_target(self, num_attempts=10) -> Point2:

@@ -9,7 +9,6 @@ TAG_ACTION_FAILED: str = "action_failed"
 ALL_UNITS = ALL_STRUCTURES | set(abilityid_to_unittypeid.values())
 EXCLUDE_FROM_COMBAT = WORKER_TYPES | CHANGELING_TYPES | {UnitTypeId.LARVA, UnitTypeId.EGG}
 PROFILING_FILE = "profiling"
-RESULT_PREDICTOR_FILE = "data/result_predictor.pkl"
 
 DPS_OVERRIDE = {
     UnitTypeId.BUNKER: 40,

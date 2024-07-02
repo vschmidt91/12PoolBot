@@ -1,7 +1,6 @@
 import cProfile
 import io
 import os
-import pickle
 import pstats
 import random
 import sys
@@ -11,7 +10,6 @@ from itertools import chain
 from ares import DEBUG, AresBot
 from ares.behaviors.macro import Mining
 from loguru import logger
-from sc2.data import Result
 from sc2.ids.unit_typeid import UnitTypeId
 
 from .combat_predictor import CombatContext, CombatPrediction, predict_combat
@@ -22,7 +20,6 @@ from .consts import (
     DPS_OVERRIDE,
     EXCLUDE_FROM_COMBAT,
     PROFILING_FILE,
-    RESULT_PREDICTOR_FILE,
     TAG_ACTION_FAILED,
     TAG_MICRO_THROTTLING,
     UNKNOWN_VERSION,
