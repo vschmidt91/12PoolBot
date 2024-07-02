@@ -72,7 +72,8 @@ class Micro(Component):
         retreat_center = Point2(np.median(np.array(retreat_targets), axis=0))
         retreat_targets.sort(key=lambda t: t.distance_to(retreat_center))
 
-        pathing_cost = (combat_prediction.context.pathing + combat_prediction.enemy_presence.dps).astype(np.float64)
+        pathing_cost = (combat_prediction.context.pathing + np.maximum(0, -combat_prediction.confidence)).astype(np.float64)
+        # pathing_cost = (combat_prediction.context.pathing + combat_prediction.enemy_presence.dps).astype(np.float64)
 
         attack_pathing = DijkstraOutput.from_cy(
             cy_dijkstra(
@@ -99,7 +100,7 @@ class Micro(Component):
             attack_path = attack_pathing.get_path(p, attack_path_limit)
 
             combat_action: CombatAction
-            combat_simulation = combat_prediction.confidence(Point2(attack_path[-1]))
+            combat_simulation = combat_prediction.confidence[attack_path[-1]]
             if np.isnan(combat_simulation):
                 combat_action = CombatAction.Attack
             elif 0 <= combat_simulation:

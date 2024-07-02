@@ -30,15 +30,9 @@ class CombatPresence:
 class CombatPrediction:
     context: CombatContext
     dimensionality: np.ndarray
+    confidence: np.ndarray
     presence: CombatPresence
     enemy_presence: CombatPresence
-
-    def confidence(self, p: Point2) -> float:
-        pr = p.rounded
-        e = self.dimensionality[pr]
-        force = self.presence.dps[pr] * (self.presence.health[pr] ** e)
-        enemy_force = self.enemy_presence.dps[pr] * (self.enemy_presence.health[pr] ** e)
-        return np.log1p(force) - np.log1p(enemy_force)
 
 
 @lru_cache(maxsize=None)
@@ -67,16 +61,22 @@ def _combat_presence(context: CombatContext, units: Units) -> CombatPresence:
 def _dimensionality(pathing: np.ndarray) -> np.ndarray:
     dimensionality_local = np.where(pathing == np.inf, 1.0, 2.0)
     dimensionality_filtered = ndimage.gaussian_filter(dimensionality_local, sigma=5.0)
-    return np.clip(dimensionality_filtered, 1, 2)
+    return dimensionality_filtered
 
 
 def predict_combat(context: CombatContext) -> CombatPrediction:
     presence = _combat_presence(context, context.units)
     enemy_presence = _combat_presence(context, context.enemy_units)
     dimensionality = _dimensionality(context.pathing)
+
+    force = presence.dps * np.power(presence.health, dimensionality)
+    enemy_force = enemy_presence.dps * np.power(enemy_presence.health, dimensionality)
+    confidence = np.log1p(force) - np.log1p(enemy_force)
+
     return CombatPrediction(
         context=context,
         dimensionality=dimensionality,
+        confidence=confidence,
         presence=presence,
         enemy_presence=enemy_presence,
     )
