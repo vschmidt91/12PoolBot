@@ -51,6 +51,7 @@ class TwelvePoolBot(Strategy, Micro, Macro, AresBot):
             except Exception:
                 pass
         if result_predictor is None:
+            await self.tags.add_tag("predictor_reset")
             (state_size,) = GameState.from_bot(self).to_tensor().shape
             result_predictor = ResultPredictor(input_size=state_size)
         self.result_predictor = result_predictor

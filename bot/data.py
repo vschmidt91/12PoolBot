@@ -37,8 +37,8 @@ class GameState:
 
     @classmethod
     def from_bot(cls, bot: BotAI) -> "GameState":
-        unit_counts = Counter(u.type_id for u in bot.units)
-        enemy_unit_counts = Counter(u.type_id for u in bot.enemy_units)
+        unit_counts = Counter(u.type_id for u in bot.all_own_units)
+        enemy_unit_counts = Counter(u.type_id for u in bot.all_enemy_units)
         upgrades = bot.state.upgrades
         score = {str(k): float(v) for k, v in bot.state.score.summary}
         visibility = bot.state.visibility.data_numpy.astype(float).mean()
