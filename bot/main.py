@@ -19,6 +19,7 @@ from .components.macro import Macro
 from .components.micro import Micro
 from .components.strategy import Strategy
 from .consts import (
+    DPS_OVERRIDE,
     EXCLUDE_FROM_COMBAT,
     PROFILING_FILE,
     RESULT_PREDICTOR_FILE,
@@ -159,7 +160,9 @@ class TwelvePoolBot(Strategy, Micro, Macro, AresBot):
 
     @lru_cache(maxsize=None)
     def dps_fast(self, unit: UnitTypeId) -> float:
-        if units := self.all_units(unit):
+        if dps := DPS_OVERRIDE.get(unit):
+            return dps
+        elif units := self.all_units(unit):
             return max(units[0].ground_dps, units[0].air_dps)
         else:
             return 0.0

@@ -11,3 +11,6 @@ EXCLUDE_FROM_COMBAT = WORKER_TYPES | CHANGELING_TYPES | {UnitTypeId.LARVA, UnitT
 PROFILING_FILE = "profiling"
 RESULT_PREDICTOR_FILE = "data/result_predictor.pkl"
 
+DPS_OVERRIDE = {
+    UnitTypeId.BUNKER: 40,
+}

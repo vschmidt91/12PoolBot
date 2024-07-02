@@ -24,7 +24,7 @@ class QFunction(torch.nn.Module):
 class ResultPredictor:
     def __init__(self, input_size: int):
         self.q_function = QFunction(input_size=input_size)
-        self.optimizer = torch.optim.NAdam(self.q_function.parameters(), weight_decay=1e-3)
+        self.optimizer = torch.optim.NAdam(self.q_function.parameters())
         self.loss = torch.nn.BCEWithLogitsLoss()
 
     def predict(self, state: GameState) -> float:

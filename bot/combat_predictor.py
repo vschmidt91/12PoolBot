@@ -5,7 +5,6 @@ from typing import Callable
 import numpy as np
 import skimage.draw
 from sc2.ids.unit_typeid import UnitTypeId
-from sc2.position import Point2
 from sc2.units import Units
 from scipy import ndimage
 

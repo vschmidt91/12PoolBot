@@ -42,6 +42,7 @@ class Strategy(Component):
         )
 
         mutalisk_switch = self.enemy_structures.flying and not self.enemy_structures.not_flying
+        mutalisk_switch = True
         build_unit = (
             UnitTypeId.DRONE if should_drone else (UnitTypeId.MUTALISK if mutalisk_switch else UnitTypeId.ZERGLING)
         )

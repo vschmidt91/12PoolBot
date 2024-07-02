@@ -7,7 +7,6 @@ from typing import Iterable
 import numpy as np
 from ares.consts import DEBUG
 from sc2.ids.ability_id import AbilityId
-from sc2.ids.buff_id import BuffId
 from sc2.ids.unit_typeid import UnitTypeId
 from sc2.position import Point2
 
@@ -63,17 +62,27 @@ class Micro(Component):
         )
 
     def micro_army(self, combat_prediction: CombatPrediction) -> Iterable[Action]:
-        target_units = combat_prediction.context.enemy_units.not_flying
-        attack_targets = self.enemy_start_locations + [u.position for u in target_units]
+        units = sorted(self.units({UnitTypeId.ZERGLING, UnitTypeId.MUTALISK}), key=lambda u: u.tag)
+        target_units = sorted(combat_prediction.context.enemy_units.not_flying, key=lambda u: u.tag)
+        civilians = self.workers
+
+        if not target_units or not civilians:
+            for unit in units:
+                if unit.is_idle:
+                    yield AttackMove(unit, self.random_scout_target())
+            return
+
+        attack_targets = [u.position for u in target_units]
         attack_center = Point2(np.median(np.array(attack_targets), axis=0))
         attack_targets.sort(key=lambda t: t.distance_to(attack_center), reverse=True)
 
-        retreat_targets = [self.start_location] + [w.position for w in self.workers]
+        retreat_targets = [w.position for w in civilians]
         retreat_center = Point2(np.median(np.array(retreat_targets), axis=0))
         retreat_targets.sort(key=lambda t: t.distance_to(retreat_center))
 
-        pathing_cost = (combat_prediction.context.pathing + np.maximum(0, -combat_prediction.confidence)).astype(np.float64)
-        # pathing_cost = (combat_prediction.context.pathing + combat_prediction.enemy_presence.dps).astype(np.float64)
+        pathing_cost = (combat_prediction.context.pathing + np.maximum(0, -combat_prediction.confidence)).astype(
+            np.float64
+        )
 
         attack_pathing = DijkstraOutput.from_cy(
             cy_dijkstra(
@@ -91,34 +100,25 @@ class Micro(Component):
         if self.config[DEBUG]:
             self.mediator.get_map_data_object.draw_influence_in_game(pathing_cost)
 
-        units = sorted(self.units({UnitTypeId.ZERGLING, UnitTypeId.MUTALISK}), key=lambda u: u.tag)
         for unit, target, retreat_target in zip(units, cycle(attack_targets), cycle(retreat_targets)):
             p = unit.position.rounded
             attack_path_limit = 5
-            retreat_path_limit = 3
-
             attack_path = attack_pathing.get_path(p, attack_path_limit)
 
-            combat_action: CombatAction
-            combat_simulation = combat_prediction.confidence[attack_path[-1]]
-            if np.isnan(combat_simulation):
-                combat_action = CombatAction.Attack
-            elif 0 <= combat_simulation:
+            if 0 <= combat_prediction.confidence[attack_path[-1]]:
                 combat_action = CombatAction.Attack
             elif 0 < combat_prediction.enemy_presence.dps[p]:
                 combat_action = CombatAction.Retreat
             else:
                 combat_action = CombatAction.Hold
 
-            action: Action | None = None
             if combat_action == CombatAction.Attack:
-                if attack_pathing.dist[p] < np.inf:
-                    action = AttackMove(unit, Point2(attack_path[-1]).offset(HALF))
-                elif target_units:
+                if attack_pathing.dist[p] == np.inf:
                     action = AttackMove(unit, Point2(target))
-                elif unit.is_idle:
-                    action = AttackMove(unit, self.random_scout_target())
+                else:
+                    action = AttackMove(unit, Point2(attack_path[-1]).offset(HALF))
             elif combat_action == CombatAction.Retreat:
+                retreat_path_limit = 3
                 retreat_path = retreat_pathing.get_path(p, retreat_path_limit)
                 if retreat_pathing.dist[p] == np.inf:
                     action = Move(unit, Point2(retreat_target))
@@ -134,9 +134,6 @@ class Micro(Component):
                 self._action_cache[unit.tag] = action
                 yield action
 
-    def remove_unit(self, unit_tag: int):
-        self._action_cache.pop(unit_tag, None)
-
     def micro_queens(self) -> Iterable[Action]:
         queens = sorted(self.mediator.get_own_army_dict[UnitTypeId.QUEEN], key=lambda u: u.tag)
         hatcheries = sorted(self.townhalls, key=lambda u: u.distance_to(self.start_location))
@@ -151,8 +148,8 @@ class Micro(Component):
             a = self.game_info.playable_area
             return Point2(np.random.uniform((a.x, a.y), (a.right, a.top)))
 
-        if self.enemy_structures.not_flying.exists:
-            return self.enemy_structures.not_flying.random.position
+        if self.enemy_structures.exists:
+            return self.enemy_structures.random.position
         for p in self.enemy_start_locations:
             if not self.is_visible(p):
                 return p
