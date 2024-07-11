@@ -23,8 +23,8 @@ class Macro(Component):
             or self.build_unit(
                 UnitTypeId.QUEEN, limit=self.townhalls.amount - len(self.mediator.get_own_army_dict[UnitTypeId.QUEEN])
             )
-            or self.research_upgrade(UpgradeId.ZERGLINGMOVEMENTSPEED)
             or self.make_tech(unit)
+            or self.research_upgrade(UpgradeId.ZERGLINGMOVEMENTSPEED)
             or self.build_unit(UnitTypeId.OVERLORD, limit=1 if self.supply_left <= 0 else 0)
             or self.expand()
             or DoNothing()
@@ -40,7 +40,7 @@ class Macro(Component):
         return DoNothing()
 
     def expand(self) -> Action | None:
-        if not (target := self.get_next_expansion()):
+        if not (target := self.get_next_free_expansion()):
             return None
         return self.build_unit(UnitTypeId.HATCHERY, target=target, limit=1)
 
@@ -62,7 +62,7 @@ class Macro(Component):
                 return action
         return None
 
-    def get_next_expansion(self) -> Point2 | None:
+    def get_next_free_expansion(self) -> Point2 | None:
         taken = {th.position for th in self.townhalls}
         return next((p for p, d in self.mediator.get_own_expansions if p not in taken), None)
 
@@ -115,5 +115,6 @@ class Macro(Component):
         elif not (researcher := self.find_trainer(upgrade)):
             return None
         elif not self.can_afford(upgrade):
-            return DoNothing()
+            # return DoNothing()
+            return None
         return Research(researcher, upgrade)

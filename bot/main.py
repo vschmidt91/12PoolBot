@@ -46,8 +46,8 @@ class TwelvePoolBot(Strategy, Micro, Macro, AresBot):
             # increase number of decimal places
             pstats.f8 = lambda x: "%14.9f" % x  # type: ignore
             save_map(self.game_info, "resources")
-            await self.client.debug_create_unit([[UnitTypeId.ZERGLING, 40, self.game_info.map_center, 2]])
-            await self.client.debug_create_unit([[UnitTypeId.ZERGLING, 30, self.game_info.map_center, 1]])
+            #await self.client.debug_create_unit([[UnitTypeId.ZERGLING, 40, self.game_info.map_center, 2]])
+            #await self.client.debug_create_unit([[UnitTypeId.ZERGLING, 30, self.game_info.map_center, 1]])
 
         if os.path.exists(VERSION_FILE):
             with open(VERSION_FILE) as f:
@@ -70,6 +70,8 @@ class TwelvePoolBot(Strategy, Micro, Macro, AresBot):
 
         if strategy.build_unit not in {UnitTypeId.ZERGLING, UnitTypeId.DRONE}:
             await self.tags.add_tag(f"macro_{strategy.build_unit.name}")
+        if self.mediator.get_own_army_dict[UnitTypeId.ROACH]:
+            await self.tags.add_tag("macro_ROACH")
 
         macro_actions = list(self.macro(strategy.build_unit))
         micro_actions = list(self.micro(combat_prediction))
@@ -80,6 +82,7 @@ class TwelvePoolBot(Strategy, Micro, Macro, AresBot):
             logger.info(f"Limiting micro actions: {len(micro_actions)} => {self.max_micro_actions}")
             random.shuffle(micro_actions)
             micro_actions = micro_actions[: self.max_micro_actions]
+
 
         if profiler:
             profiler.disable()

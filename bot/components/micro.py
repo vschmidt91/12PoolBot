@@ -62,7 +62,7 @@ class Micro(Component):
         )
 
     def micro_army(self, combat_prediction: CombatPrediction) -> Iterable[Action]:
-        units = sorted(self.units({UnitTypeId.ZERGLING, UnitTypeId.MUTALISK}), key=lambda u: u.tag)
+        units = sorted(self.units({UnitTypeId.ZERGLING, UnitTypeId.ROACH, UnitTypeId.MUTALISK}), key=lambda u: u.tag)
         target_units = sorted(combat_prediction.context.enemy_units.not_flying, key=lambda u: u.tag)
         civilians = self.workers
 
