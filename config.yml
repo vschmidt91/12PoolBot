@@ -7,7 +7,7 @@ MyBotName: 12PoolBot
 MyBotRace: Zerg
 ########################
 
-UseData: False
+UseData: True
 Debug: False
 GameStep: 2
 DebugGameStep: 2
