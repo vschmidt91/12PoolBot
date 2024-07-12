@@ -8,7 +8,7 @@ MyBotRace: Zerg
 ########################
 
 UseData: False
-Debug: False
+Debug: True
 GameStep: 2
 DebugGameStep: 2
 
