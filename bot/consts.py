@@ -12,4 +12,5 @@ PROFILING_FILE = "profiling"
 
 DPS_OVERRIDE = {
     UnitTypeId.BUNKER: 40,
+    UnitTypeId.PLANETARYFORTRESS: 5,
 }

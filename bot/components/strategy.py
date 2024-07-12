@@ -38,16 +38,15 @@ class Strategy(Component):
         )
 
         early_game = self.time < 150
-        mine_gas_for_speed = (
-            0 if self.already_pending_upgrade(UpgradeId.ZERGLINGMOVEMENTSPEED) else (103 - self.vespene) // 4
-        )
+        mine_gas_for_speed = not self.already_pending_upgrade(UpgradeId.ZERGLINGMOVEMENTSPEED)
 
         mutalisk_switch = self.enemy_structures.flying and not self.enemy_structures.not_flying
         build_unit = (
             UnitTypeId.DRONE if should_drone else (UnitTypeId.MUTALISK if mutalisk_switch else UnitTypeId.ZERGLING)
         )
+        mine_gas = early_game or mine_gas_for_speed or mutalisk_switch
 
-        vespene_target = 3 if (mutalisk_switch or early_game) else np.clip(mine_gas_for_speed, 0, 3)
+        vespene_target = 3 if mine_gas else 0
         tech_building_position = self.start_location.towards(self.game_info.map_center, 8)
         return StrategyDecision(
             build_unit=build_unit,
