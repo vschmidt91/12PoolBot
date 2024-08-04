@@ -40,7 +40,9 @@ class Macro(Component):
         return DoNothing()
 
     def expand(self) -> Action | None:
-        if not (target := self.get_next_free_expansion()):
+        if not self.already_pending_upgrade(UpgradeId.ZERGLINGMOVEMENTSPEED):
+            return None
+        elif not (target := self.get_next_free_expansion()):
             return None
         return self.build_unit(UnitTypeId.HATCHERY, target=target, limit=1)
 
