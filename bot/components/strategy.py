@@ -37,7 +37,7 @@ class Strategy(Component):
             and not cy_unit_pending(self, UnitTypeId.DRONE)
         )
 
-        early_game = self.time < 150
+        early_game = not self.build_order_runner.build_completed
         mine_gas_for_speed = not self.already_pending_upgrade(UpgradeId.ZERGLINGMOVEMENTSPEED)
 
         mutalisk_switch = self.enemy_structures.flying and not self.enemy_structures.not_flying
