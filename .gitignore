@@ -1,5 +1,10 @@
 # Custom
+.idea
 resources
+version.txt
+profiling
+*.xz
+*.cpp
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
@@ -130,8 +135,3 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
-
-.idea
-/version.txt
-/profiling
-/combat_simulation/dataset.xz
