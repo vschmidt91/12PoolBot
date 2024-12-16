@@ -1,6 +1,6 @@
 [tool.poetry]
-name = "ares-sc2-starter-bot"
-version = "0.1.0"
+name = "12PoolBot"
+version = "1.0.0"
 description = ""
 authors = []
 readme = "README.md"
