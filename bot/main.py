@@ -6,6 +6,7 @@ import random
 import sys
 from functools import lru_cache
 from itertools import chain
+from typing import override
 
 from ares import DEBUG, AresBot
 from ares.behaviors.macro import Mining
@@ -34,6 +35,7 @@ class TwelvePoolBot(Strategy, Micro, Macro, AresBot):
     version: str = UNKNOWN_VERSION
     tags: Tags
 
+    @override
     async def on_start(self) -> None:
         await super().on_start()
 
@@ -55,6 +57,7 @@ class TwelvePoolBot(Strategy, Micro, Macro, AresBot):
 
         await self.tags.add_tag(f"version_{self.version}")
 
+    @override
     async def on_step(self, iteration: int) -> None:
         await super().on_step(iteration)
 
