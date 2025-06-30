@@ -26,8 +26,6 @@ from .consts import (
     VERSION_FILE,
 )
 from .tags import Tags
-from .utils.debug import save_map
-
 
 class TwelvePoolBot(Strategy, Micro, Macro, AresBot):
     max_micro_actions = 80
@@ -45,7 +43,6 @@ class TwelvePoolBot(Strategy, Micro, Macro, AresBot):
         if self.config[DEBUG]:
             # increase number of decimal places
             pstats.f8 = lambda x: "%14.9f" % x  # type: ignore
-            save_map(self.game_info, "resources")
             # await self.client.debug_create_unit([[UnitTypeId.ZERGLING, 40, self.game_info.map_center, 2]])
             # await self.client.debug_create_unit([[UnitTypeId.ZERGLING, 30, self.game_info.map_center, 1]])
 
