@@ -12,6 +12,7 @@ from sc2.player import Bot, Computer
 sys.path.append("ares-sc2/src/ares")
 sys.path.append("ares-sc2/src")
 sys.path.append("ares-sc2")
+sys.path.append("cython-extensions-sc2")
 
 import yaml
 
