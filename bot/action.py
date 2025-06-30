@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Optional, override
+from typing import Optional
 
 from ares import AresBot
 from ares.consts import UnitRole
@@ -18,7 +18,6 @@ class Action(ABC):
 
 
 class DoNothing(Action):
-    @override
     async def execute(self, bot: AresBot) -> bool:
         return True
 
@@ -28,7 +27,6 @@ class AttackMove(Action):
     unit: Unit
     target: Point2
 
-    @override
     async def execute(self, bot: AresBot) -> bool:
         return self.unit.attack(self.target)
 
@@ -38,7 +36,6 @@ class Move(Action):
     unit: Unit
     target: Point2
 
-    @override
     async def execute(self, bot: AresBot) -> bool:
         return self.unit.move(self.target)
 
@@ -47,7 +44,6 @@ class Move(Action):
 class HoldPosition(Action):
     unit: Unit
 
-    @override
     async def execute(self, bot: AresBot) -> bool:
         return self.unit.stop()
 
@@ -58,7 +54,6 @@ class UseAbility(Action):
     ability: AbilityId
     target: Optional[Point2] = None
 
-    @override
     async def execute(self, bot: AresBot) -> bool:
         return self.unit(self.ability, target=self.target)
 
@@ -69,7 +64,6 @@ class Build(Action):
     type_id: UnitTypeId
     near: Point2
 
-    @override
     async def execute(self, bot: AresBot) -> bool:
         logger.info(self)
         bot.mediator.assign_role(tag=self.unit.tag, role=UnitRole.PERSISTENT_BUILDER)
@@ -84,7 +78,6 @@ class Train(Action):
     trainer: Unit
     unit: UnitTypeId
 
-    @override
     async def execute(self, bot: AresBot) -> bool:
         return self.trainer.train(self.unit)
 
@@ -94,6 +87,5 @@ class Research(Action):
     researcher: Unit
     upgrade: UpgradeId
 
-    @override
     async def execute(self, bot: AresBot) -> bool:
         return self.researcher.research(self.upgrade)

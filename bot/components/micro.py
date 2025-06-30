@@ -5,14 +5,14 @@ from itertools import chain, cycle
 from typing import Iterable
 
 import numpy as np
-from ares.consts import DEBUG
+from ares.consts import DEBUG, EngagementResult
+from cython_extensions.dijkstra import cy_dijkstra  # type: ignore
 from sc2.ids.ability_id import AbilityId
 from sc2.ids.unit_typeid import UnitTypeId
 from sc2.position import Point2
 
 from ..action import Action, AttackMove, HoldPosition, Move, UseAbility
-from ..combat_predictor import CombatPrediction
-from ..utils.cy_dijkstra import cy_dijkstra  # type: ignore
+from ..combat_predictor_sim import CombatPredictor
 from .component import Component
 
 Point = tuple[int, int]
@@ -25,45 +25,18 @@ class CombatAction(Enum):
     Retreat = auto()
 
 
-@dataclass
-class DijkstraOutput:
-    prev_x: np.ndarray
-    prev_y: np.ndarray
-    dist: np.ndarray
-
-    @classmethod
-    def from_cy(cls, o) -> "DijkstraOutput":
-        return DijkstraOutput(
-            np.asarray(o.prev_x),
-            np.asarray(o.prev_y),
-            np.asarray(o.dist),
-        )
-
-    def get_path(self, target: Point, limit: float = math.inf):
-        path: list[Point] = []
-        x, y = target
-        while len(path) < limit:
-            path.append((x, y))
-            x2 = self.prev_x[x, y]
-            y2 = self.prev_y[x, y]
-            if x2 < 0:
-                break
-            x, y = x2, y2
-        return path
-
-
 class Micro(Component):
     _action_cache: dict[int, Action] = {}
 
-    def micro(self, combat_prediction: CombatPrediction) -> Iterable[Action]:
+    def micro(self, combat: CombatPredictor, pathing: np.ndarray) -> Iterable[Action]:
         return chain(
-            self.micro_army(combat_prediction),
+            self.micro_army(combat, pathing),
             self.micro_queens(),
         )
 
-    def micro_army(self, combat_prediction: CombatPrediction) -> Iterable[Action]:
+    def micro_army(self, combat: CombatPredictor, pathing: np.ndarray) -> Iterable[Action]:
         units = sorted(self.units({UnitTypeId.ZERGLING, UnitTypeId.ROACH, UnitTypeId.MUTALISK}), key=lambda u: u.tag)
-        target_units = sorted(combat_prediction.context.enemy_units.not_flying, key=lambda u: u.tag)
+        target_units = sorted(combat.enemy_units.not_flying, key=lambda u: u.tag)
         civilians = self.workers
 
         if not target_units or not civilians:
@@ -80,47 +53,40 @@ class Micro(Component):
         retreat_center = Point2(np.median(np.array(retreat_targets), axis=0))
         retreat_targets.sort(key=lambda t: t.distance_to(retreat_center))
 
-        pathing_cost = (combat_prediction.context.pathing + np.maximum(0, -combat_prediction.confidence)).astype(
-            np.float64
+        attack_pathing = cy_dijkstra(
+            pathing,
+            np.array(attack_targets, dtype=np.intp),
         )
-
-        attack_pathing = DijkstraOutput.from_cy(
-            cy_dijkstra(
-                pathing_cost,
-                np.array(attack_targets, dtype=np.intp),
-            )
-        )
-        retreat_pathing = DijkstraOutput.from_cy(
-            cy_dijkstra(
-                pathing_cost,
-                np.array(retreat_targets, dtype=np.intp),
-            )
+        retreat_pathing = cy_dijkstra(
+            pathing,
+            np.array(retreat_targets, dtype=np.intp),
         )
 
         if self.config[DEBUG]:
-            self.mediator.get_map_data_object.draw_influence_in_game(pathing_cost)
+            self.mediator.get_map_data_object.draw_influence_in_game(pathing)
 
         for unit, target, retreat_target in zip(units, cycle(attack_targets), cycle(retreat_targets)):
             p = unit.position.rounded
             attack_path_limit = 5
             attack_path = attack_pathing.get_path(p, attack_path_limit)
+            outcome = combat.prediction.outcome_for[unit.tag]
 
-            if 0 <= combat_prediction.confidence[attack_path[-1]]:
+            if outcome > EngagementResult.TIE:
                 combat_action = CombatAction.Attack
-            elif 0 < combat_prediction.enemy_presence.dps[p]:
+            elif pathing[p] > 1:
                 combat_action = CombatAction.Retreat
             else:
                 combat_action = CombatAction.Hold
 
             if combat_action == CombatAction.Attack:
-                if attack_pathing.dist[p] == np.inf:
+                if len(attack_path) < 2:
                     action = AttackMove(unit, Point2(target))
                 else:
                     action = AttackMove(unit, Point2(attack_path[-1]).offset(HALF))
             elif combat_action == CombatAction.Retreat:
                 retreat_path_limit = 3
                 retreat_path = retreat_pathing.get_path(p, retreat_path_limit)
-                if retreat_pathing.dist[p] == np.inf:
+                if len(retreat_path) < 2:
                     action = Move(unit, Point2(retreat_target))
                 elif len(retreat_path) < retreat_path_limit:
                     action = AttackMove(unit, Point2(retreat_path[-1]).offset(HALF))

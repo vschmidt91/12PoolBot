@@ -6,14 +6,13 @@ import random
 import sys
 from functools import lru_cache
 from itertools import chain
-from typing import override
 
 from ares import DEBUG, AresBot
 from ares.behaviors.macro import Mining
 from loguru import logger
 from sc2.ids.unit_typeid import UnitTypeId
 
-from .combat_predictor import CombatContext, CombatPrediction, predict_combat
+from .combat_predictor_sim import CombatPredictor, CombatPrediction
 from .components.macro import Macro
 from .components.micro import Micro
 from .components.strategy import Strategy
@@ -35,7 +34,6 @@ class TwelvePoolBot(Strategy, Micro, Macro, AresBot):
     version: str = UNKNOWN_VERSION
     tags: Tags
 
-    @override
     async def on_start(self) -> None:
         await super().on_start()
 
@@ -57,7 +55,6 @@ class TwelvePoolBot(Strategy, Micro, Macro, AresBot):
 
         await self.tags.add_tag(f"version_{self.version}")
 
-    @override
     async def on_step(self, iteration: int) -> None:
         await super().on_step(iteration)
 
@@ -69,15 +66,19 @@ class TwelvePoolBot(Strategy, Micro, Macro, AresBot):
             profiler.enable()
         strategy = self.decide_strategy()
 
-        combat_prediction = self.predict_combat()
+        
+        units = self.all_own_units.exclude_type(EXCLUDE_FROM_COMBAT)
+        enemy_units = self.all_enemy_units.exclude_type(EXCLUDE_FROM_COMBAT)
+        predictor = CombatPredictor(self, units, enemy_units)
 
         if strategy.build_unit not in {UnitTypeId.ZERGLING, UnitTypeId.DRONE}:
             await self.tags.add_tag(f"macro_{strategy.build_unit.name}")
         if self.mediator.get_own_army_dict[UnitTypeId.ROACH]:
             await self.tags.add_tag("macro_ROACH")
 
+        pathing = self.mediator.get_ground_grid.astype(float)
         macro_actions = list(self.macro(strategy.build_unit))
-        micro_actions = list(self.micro(combat_prediction))
+        micro_actions = list(self.micro(predictor, pathing))
 
         # avoid APM bug
         if self.max_micro_actions < len(micro_actions):
@@ -104,19 +105,6 @@ class TwelvePoolBot(Strategy, Micro, Macro, AresBot):
                     logger.warning(f"Action failed: {action}")
 
         self.register_behavior(Mining(workers_per_gas=strategy.vespene_target))
-
-    def predict_combat(self) -> CombatPrediction:
-        units = self.all_own_units.exclude_type(EXCLUDE_FROM_COMBAT)
-        enemy_units = self.all_enemy_units.exclude_type(EXCLUDE_FROM_COMBAT)
-        dps_provider = self.dps_fast
-        pathing = self.mediator.get_map_data_object.get_pyastar_grid()
-        context = CombatContext(
-            units=units,
-            enemy_units=enemy_units,
-            dps=dps_provider,
-            pathing=pathing,
-        )
-        return predict_combat(context)
 
     @lru_cache(maxsize=None)
     def dps_fast(self, unit: UnitTypeId) -> float:
