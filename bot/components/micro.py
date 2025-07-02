@@ -28,13 +28,13 @@ class CombatAction(Enum):
 class Micro(Component):
     _action_cache: dict[int, Action] = {}
 
-    def micro(self, combat: CombatPredictor, pathing: np.ndarray) -> Iterable[Action]:
+    def micro(self, combat: CombatPredictor, pathing: np.ndarray, supply_used: int) -> Iterable[Action]:
         return chain(
-            self.micro_army(combat, pathing),
+            self.micro_army(combat, pathing, supply_used),
             self.micro_queens(),
         )
 
-    def micro_army(self, combat: CombatPredictor, pathing: np.ndarray) -> Iterable[Action]:
+    def micro_army(self, combat: CombatPredictor, pathing: np.ndarray, supply_used: int) -> Iterable[Action]:
         units = sorted(self.units({UnitTypeId.ZERGLING, UnitTypeId.ROACH, UnitTypeId.MUTALISK}), key=lambda u: u.tag)
         target_units = sorted(combat.enemy_units.not_flying, key=lambda u: u.tag)
         civilians = self.workers
@@ -71,7 +71,9 @@ class Micro(Component):
             attack_path = attack_pathing.get_path(p, attack_path_limit)
             outcome = combat.prediction.outcome_for[unit.tag]
 
-            if outcome > EngagementResult.TIE:
+            bias = 0.0
+            bias += 4 * (supply_used / 200)**2
+            if outcome + bias > EngagementResult.TIE:
                 combat_action = CombatAction.Attack
             elif pathing[p] > 1:
                 combat_action = CombatAction.Retreat

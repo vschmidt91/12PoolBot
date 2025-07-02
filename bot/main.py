@@ -75,7 +75,7 @@ class TwelvePoolBot(Strategy, Micro, Macro, AresBot):
 
         pathing = self.mediator.get_ground_grid.astype(float)
         macro_actions = list(self.macro(strategy.build_unit))
-        micro_actions = list(self.micro(predictor, pathing))
+        micro_actions = list(self.micro(predictor, pathing, self.supply_used))
 
         # avoid APM bug
         if self.max_micro_actions < len(micro_actions):
