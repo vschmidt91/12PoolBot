@@ -10,7 +10,15 @@
             "request": "launch",
             "program": "${workspaceFolder}/run.py",
             "console": "integratedTerminal",
-            "args": [],
+            "args": []
+        },
+        {
+            "name": "Build Ladder ZIP",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/scripts/create_ladder_zip.py",
+            "console": "integratedTerminal",
+            "args": []
         }
     ]
 }
