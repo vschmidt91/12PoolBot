@@ -203,8 +203,8 @@ if __name__ == "__main__":
     # clone map-analyzer
     run("git clone https://github.com/raspersc2/SC2MapAnalysis", shell=True)
     # cython extensions
-    run("git clone https://github.com/AresSC2/cython-extensions-sc2", shell=True)
-    run("cd cython-extensions-sc2 && poetry build", shell=True)
+    # run("git clone https://github.com/AresSC2/cython-extensions-sc2", shell=True)
+    # run("cd cython-extensions-sc2 && poetry build", shell=True)
 
     # clone sc2-helper
     # run("git clone https://github.com/danielvschoor/sc2-helper", shell=True)
@@ -252,11 +252,11 @@ if __name__ == "__main__":
     p_status = p.wait()
 
     # compile the cython code
-    print("Compiling cython code...")
-    p = Popen(["poetry", "build"], cwd=f"{ROOT_DIRECTORY}ares-sc2")
+    # print("Compiling cython code...")
+    # p = Popen(["poetry", "build"], cwd=f"{ROOT_DIRECTORY}ares-sc2")
     # makes the process wait, otherwise files get zipped before compile is complete
-    p.communicate()
-    p_status = p.wait()
+    # p.communicate()
+    # p_status = p.wait()
 
     # at the moment -> ensure debug=False
     print("Checking config values...")
